@@ -245,6 +245,16 @@ def _expand_text(tweet):
             text = text.replace(tco, "")
         else:
             text = text.replace(tco, exp)
+    # X appends a trailing t.co for attached media and for a quoted tweet, and that one
+    # is NOT in tweet.urls (it lives in the media / quote entities), so the loop above
+    # misses it. We render the image/quote ourselves, so drop any bare t.co left dangling
+    # at the end of the text in that case (loop handles media + quote both present).
+    if getattr(tweet, "media", None) or getattr(tweet, "quote", None) or getattr(tweet, "is_quote_status", False):
+        while True:
+            stripped = re.sub(r"\s*https?://t\.co/\w+\s*$", "", text)
+            if stripped == text:
+                break
+            text = stripped
     return text.strip()
 
 
