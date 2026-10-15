@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write   # the CI prerelease that carries the packages (artifact storage is quota-limited; releases are not)
 
 env:
   THEOS: /home/runner/theos
@@ -199,7 +199,22 @@ jobs:
           (cd /tmp/ipa && zip -qr9 "$GITHUB_WORKSPACE/packages/Chirpie-$VERSION${{ matrix.suffix }}.ipa" Payload)
           ls -la packages/
 
-      - name: Upload packages
+      # Attach the packages to a rolling prerelease. Release assets do NOT count against the Actions artifact
+      # storage quota, so this works even when artifact uploads are refused. Both matrix jobs write to the same
+      # tag with distinct filenames (armv7 vs arm64), --clobber makes re-runs idempotent.
+      - name: Publish packages to the CI prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          gh release view ci-build >/dev/null 2>&1 || \
+            gh release create ci-build --prerelease --title "Latest CI build" \
+              --notes "Automatic build of the latest commit (armv7 for iOS 6, arm64 for iOS 14-17). Not a stable release." || true
+          gh release upload ci-build packages/*.ipa packages/*.deb --clobber
+          echo "uploaded to the ci-build prerelease:"; ls -la packages/*.ipa packages/*.deb
+
+      - name: Upload packages (artifact store; may be refused when the quota is full)
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
@@ -210,6 +225,7 @@ jobs:
 
       - name: Upload build log
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: build-log-${{ matrix.name }}
