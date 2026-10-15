@@ -1,0 +1,9 @@
+Package: com.samcejko.chirpie
+Name: Chirpie
+Version: 0.1.0
+Architecture: iphoneos-arm
+Description: Unofficial X / Twitter reader for iOS 6 (universal), in English and Czech: your home timeline (For You and Following), tweet threads, profiles with tweets, replies, media and likes, search (Top, Latest, People), trends, photos and videos, and bookmarks kept on the device. Needs its helper on your own server.
+Maintainer: samcejko
+Author: samcejko
+Section: Social
+Depends: firmware (>= 6.0), firmware (<< 11.0)

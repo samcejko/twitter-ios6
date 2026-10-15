@@ -1,0 +1,147 @@
+#import "CHTwitter.h"
+#import "CHHTTP.h"
+#import "CHSettings.h"
+#import "CHUtils.h"
+#import "CHCommon.h"
+
+@implementation CHTwitter
+
++ (BOOL)configured { return [CHSettings serverConfigured]; }
+
+// base URL + path + query (the server key goes on every call as ?k=)
++ (NSString *)urlForPath:(NSString *)path params:(NSDictionary *)params
+{
+    NSString *base = [CHSettings serverBaseURL];
+    if (!base.length) return nil;
+    NSMutableArray *pairs = [NSMutableArray array];
+    for (NSString *key in params) {
+        id value = params[key];
+        if (value == nil || value == [NSNull null]) continue;
+        NSString *s = [value isKindOfClass:[NSString class]] ? value : [value description];
+        if (!s.length) continue;
+        [pairs addObject:[NSString stringWithFormat:@"%@=%@", key, [CHUtils urlEncode:s]]];
+    }
+    NSString *serverKey = [CHSettings serverKey];
+    if (serverKey.length) [pairs addObject:[NSString stringWithFormat:@"k=%@", [CHUtils urlEncode:serverKey]]];
+    NSString *url = [base stringByAppendingString:path];
+    if (pairs.count) url = [url stringByAppendingFormat:@"?%@", [pairs componentsJoinedByString:@"&"]];
+    return url;
+}
+
+// A GET to the helper. `error` is already set for network failures and for a helper error (code = HTTP status,
+// message from the body's "error"); `json` is the parsed body (a dictionary) when there was one.
++ (CHHTTPTask *)get:(NSString *)path params:(NSDictionary *)params completion:(void (^)(NSDictionary *json, NSError *error))completion
+{
+    NSString *url = [self urlForPath:path params:params];
+    if (!url) {
+        CHMain(^{ if (completion) completion(nil, CHMakeError(CHErrorAPI, L(@"Set the server address in Settings first."))); });
+        return nil;
+    }
+    return [CHHTTP getJSON:url headers:nil completion:^(id json, NSInteger status, NSError *error) {
+        NSDictionary *d = [json isKindOfClass:[NSDictionary class]] ? json : nil;
+        NSError *err = error;
+        if (!err && d[@"error"]) err = CHMakeError(status ?: CHErrorAPI, CHStr(d[@"error"]));
+        if (completion) completion(d, err);
+    }];
+}
+
++ (void)checkHealth:(void (^)(BOOL ok, NSString *info, NSError *error))completion
+{
+    [self get:@"/health" params:nil completion:^(NSDictionary *json, NSError *error) {
+        BOOL ok = !error && CHBool(json[@"ok"]);
+        NSString *info = CHStr(json[@"account"]);   // the signed-in @handle, when the helper reports it
+        if (completion) completion(ok, info, error);
+    }];
+}
+
+#pragma mark - Timelines
+
++ (CHHTTPTask *)homeTimelineFollowing:(BOOL)following cursor:(NSString *)cursor
+                           completion:(void (^)(CHTweetPage *, NSError *))completion
+{
+    NSDictionary *params = @{ @"feed": following ? @"following" : @"foryou", @"cursor": cursor ?: @"" };
+    return [self get:@"/timeline" params:params completion:^(NSDictionary *json, NSError *error) {
+        if (completion) completion(error ? nil : [CHTweetPage pageFromJSON:json], error);
+    }];
+}
+
++ (CHHTTPTask *)userWithHandle:(NSString *)handle completion:(void (^)(CHUser *, NSError *))completion
+{
+    NSString *name = [handle hasPrefix:@"@"] ? [handle substringFromIndex:1] : handle;
+    return [self get:@"/user" params:@{ @"name": name ?: @"" } completion:^(NSDictionary *json, NSError *error) {
+        CHUser *user = error ? nil : [CHUser userFromJSON:json[@"user"] ?: json];
+        if (!error && !user) error = CHMakeError(CHErrorAPI, L(@"This profile could not be loaded."));
+        if (completion) completion(user, error);
+    }];
+}
+
++ (CHHTTPTask *)tweetsOfUser:(NSString *)handle userId:(NSString *)userId kind:(NSString *)kind cursor:(NSString *)cursor
+                  completion:(void (^)(CHTweetPage *, NSError *))completion
+{
+    NSString *name = [handle hasPrefix:@"@"] ? [handle substringFromIndex:1] : handle;
+    NSDictionary *params = @{ @"name": name ?: @"", @"id": userId ?: @"", @"kind": kind ?: @"tweets", @"cursor": cursor ?: @"" };
+    return [self get:@"/tweets" params:params completion:^(NSDictionary *json, NSError *error) {
+        if (completion) completion(error ? nil : [CHTweetPage pageFromJSON:json], error);
+    }];
+}
+
+#pragma mark - A tweet and its thread
+
++ (CHHTTPTask *)threadForTweet:(NSString *)tweetId cursor:(NSString *)cursor
+                    completion:(void (^)(CHThread *, NSError *))completion
+{
+    NSDictionary *params = @{ @"id": tweetId ?: @"", @"cursor": cursor ?: @"" };
+    return [self get:@"/tweet" params:params completion:^(NSDictionary *json, NSError *error) {
+        CHThread *thread = error ? nil : [CHThread threadFromJSON:json];
+        if (!error && !thread.tweet) error = CHMakeError(CHErrorAPI, L(@"This tweet could not be loaded."));
+        if (completion) completion(thread, error);
+    }];
+}
+
++ (CHHTTPTask *)tweetWithId:(NSString *)tweetId completion:(void (^)(CHTweet *, NSError *))completion
+{
+    return [self threadForTweet:tweetId cursor:nil completion:^(CHThread *thread, NSError *error) {
+        if (completion) completion(thread.tweet, error);
+    }];
+}
+
+#pragma mark - Search
+
++ (CHHTTPTask *)search:(NSString *)query kind:(NSString *)kind cursor:(NSString *)cursor
+            completion:(void (^)(CHTweetPage *, NSError *))completion
+{
+    NSDictionary *params = @{ @"q": query ?: @"", @"kind": kind ?: @"top", @"cursor": cursor ?: @"" };
+    return [self get:@"/search" params:params completion:^(NSDictionary *json, NSError *error) {
+        if (completion) completion(error ? nil : [CHTweetPage pageFromJSON:json], error);
+    }];
+}
+
++ (CHHTTPTask *)suggestionsFor:(NSString *)text completion:(void (^)(NSArray *, NSError *))completion
+{
+    return [self get:@"/suggest" params:@{ @"q": text ?: @"" } completion:^(NSDictionary *json, NSError *error) {
+        NSMutableArray *words = [NSMutableArray array];
+        for (id w in CHArr(json[@"items"])) if (CHStr(w).length) [words addObject:CHStr(w)];
+        if (completion) completion(words, error);
+    }];
+}
+
+#pragma mark - Explore
+
++ (CHHTTPTask *)trends:(void (^)(NSArray *, NSError *))completion
+{
+    return [self get:@"/trends" params:nil completion:^(NSDictionary *json, NSError *error) {
+        NSMutableArray *trends = [NSMutableArray array];
+        for (id t in CHArr(json[@"items"])) { CHTrend *tr = [CHTrend trendFromJSON:t]; if (tr) [trends addObject:tr]; }
+        if (completion) completion(trends, error);
+    }];
+}
+
+#pragma mark - Media
+
++ (NSString *)proxyURLForMediaURL:(NSString *)url
+{
+    if (!url.length) return nil;
+    return [self urlForPath:@"/proxy" params:@{ @"u": url }];
+}
+
+@end

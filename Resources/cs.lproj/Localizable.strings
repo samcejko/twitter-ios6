@@ -1,0 +1,130 @@
+/* Chirpie - čeština */
+
+/* Formátování, čas */
+"%@ posts" = "%@ příspěvků";
+"%@ retweeted" = "%@ přesdílel(a)";
+"%@ viewers" = "%@ diváků";
+"%@ Views" = "%@ zobrazení";
+"%ld days ago" = "před %ld dny";
+"%ld h ago" = "před %ld h";
+"%ld min" = "%ld min";
+"%ld min ago" = "před %ld min";
+"just now" = "právě teď";
+"yesterday" = "včera";
+"Joined %@" = "Založeno %@";
+
+/* Taby a nadpisy */
+"Home" = "Domů";
+"Explore" = "Objevovat";
+"Bookmarks" = "Záložky";
+"Settings" = "Nastavení";
+"Tweet" = "Tweet";
+"For You" = "Pro tebe";
+"Following" = "Sleduje";
+"Followers" = "Sledující";
+"Likes" = "Líbí se";
+"Tweets" = "Tweety";
+"Replies" = "Odpovědi";
+"Media" = "Média";
+"Top" = "Nejlepší";
+"Latest" = "Nejnovější";
+"People" = "Lidé";
+"Trends" = "Trendy";
+"Recent searches" = "Nedávná hledání";
+
+/* Tlačítka a obecné */
+"OK" = "OK";
+"Cancel" = "Zrušit";
+"Done" = "Hotovo";
+"Back" = "Zpět";
+"Close" = "Zavřít";
+"Clear" = "Smazat";
+"Share" = "Sdílet";
+"Copy link" = "Kopírovat odkaz";
+"Version" = "Verze";
+"About" = "O aplikaci";
+"Support the development" = "Podpořit vývoj";
+
+/* Timeline, profil, tweet */
+"Replying to @%@" = "Odpověď uživateli @%@";
+"Protected" = "Soukromý";
+"No tweets to show." = "Žádné tweety.";
+"No tweets to show. Pull down to refresh." = "Žádné tweety. Stáhni dolů pro obnovení.";
+"Nothing to show." = "Nic tu není.";
+"Nothing found." = "Nic se nenašlo.";
+"This profile could not be loaded." = "Profil se nepodařilo načíst.";
+"This tweet could not be loaded." = "Tento tweet se nepodařilo načíst.";
+"Tap the bookmark on a tweet to keep it here." = "Klepni na záložku u tweetu a uloží se sem.";
+"View my profile" = "Zobrazit můj profil";
+"My profile" = "Můj profil";
+"The helper did not report a signed-in account." = "Pomocník nehlásí přihlášený účet.";
+
+/* Hledání */
+"Search Twitter" = "Hledat na Twitteru";
+"Search Twitter for tweets, people and hashtags." = "Hledej na Twitteru tweety, lidi a hashtagy.";
+"Open a link" = "Otevřít odkaz";
+"That does not look like a Twitter link." = "To nevypadá jako odkaz z Twitteru.";
+
+/* Nastavení */
+"Server (your Raspberry Pi)" = "Server (tvoje Raspberry Pi)";
+"Server address" = "Adresa serveru";
+"Server key" = "Klíč serveru";
+"Test connection" = "Otestovat připojení";
+"Checking…" = "Kontroluji…";
+"Connected as @%@." = "Připojeno jako @%@.";
+"The server is up." = "Server běží.";
+"Set the server address first." = "Nejdřív nastav adresu serveru.";
+"Set the server address in Settings first." = "Nejdřív nastav adresu serveru v Nastavení.";
+"Set your server address to start.\nSettings are behind the button at the top left." = "Pro start nastav adresu serveru.\nNastavení je pod tlačítkem vlevo nahoře.";
+"Stream through the server" = "Streamovat přes server";
+"Timeline" = "Časová osa";
+"Autoplay videos" = "Přehrávat videa automaticky";
+"Show sensitive media" = "Zobrazovat citlivá média";
+"Appearance" = "Vzhled";
+"Dark theme" = "Tmavý vzhled";
+"Network" = "Síť";
+"Verify certificates" = "Ověřovat certifikáty";
+"Data" = "Data";
+"Clear image cache" = "Smazat mezipaměť obrázků";
+"Image cache cleared." = "Mezipaměť obrázků smazána.";
+"Clear bookmarks" = "Smazat záložky";
+"Remove every bookmarked tweet?" = "Odebrat všechny uložené tweety?";
+"Not set" = "Nenastaveno";
+"The helper on your Pi signs in to X and fetches the tweets. Enter its address, e.g. https://chirpie.samcejko.eu, and the key if you set one. 'Stream through the server' routes media through the Pi too - slower, but needed away from home." = "Pomocník na tvém Pi se přihlásí k X a stahuje tweety. Zadej jeho adresu, např. https://chirpie.samcejko.eu, a klíč, pokud jsi nějaký nastavil. „Streamovat přes server\" pustí přes Pi i média — pomalejší, ale potřeba mimo domov.";
+"Turn verification off only to reach a server with a self-signed certificate." = "Ověřování vypni jen kvůli serveru s vlastnoručně podepsaným certifikátem.";
+"Chirpie is an unofficial reader for X / Twitter. It shows what your own account can see, through a helper on your server. Not affiliated with X Corp." = "Chirpie je neoficiální čtečka X / Twitteru. Ukazuje to, co vidí tvůj vlastní účet, přes pomocníka na tvém serveru. Nemá nic společného s X Corp.";
+
+/* Otevřít v sesterských aplikacích */
+"Open in Safari" = "Otevřít v Safari";
+"Open in Surfari" = "Otevřít v Surfari";
+"Open in Tubie" = "Otevřít v Tubie";
+"Open in Twitcher" = "Otevřít v Twitcheru";
+"Open in Kicker" = "Otevřít v Kickeru";
+"Open in TikTak" = "Otevřít v TikTaku";
+
+/* Síť a chyby (sdílené s ostatními aplikacemi) */
+"Could not load." = "Nepodařilo se načíst.";
+"Connection failed." = "Připojení selhalo.";
+"Connection lost." = "Spojení ztraceno.";
+"connection timed out" = "vypršel čas připojení";
+"Content decoding failed." = "Dekódování obsahu selhalo.";
+"Could not connect to %@: %@" = "Nelze se připojit k %@: %@";
+"Could not resolve %@ (%s). Is the device online?" = "Nelze přeložit adresu %@ (%s). Je zařízení online?";
+"Receiving the response failed: %@" = "Příjem odpovědi selhal: %@";
+"Request failed (HTTP %ld)." = "Požadavek selhal (HTTP %ld).";
+"Sending the request failed." = "Odeslání požadavku selhalo.";
+"Sending the request failed: %@" = "Odeslání požadavku selhalo: %@";
+"Server certificate rejected: %@. %@" = "Certifikát serveru odmítnut: %@. %@";
+"Certificate verification can be turned off in Settings." = "Ověřování certifikátů lze vypnout v Nastavení.";
+"Check the date and time of this device." = "Zkontroluj datum a čas zařízení.";
+"The certificate bundle is missing, cannot verify the server." = "Chybí balík certifikátů, server nelze ověřit.";
+"The server closed the connection without responding." = "Server ukončil spojení bez odpovědi.";
+"The server did not answer." = "Server neodpověděl.";
+"The server sent an invalid response." = "Server poslal neplatnou odpověď.";
+"The server stopped responding (timeout)." = "Server přestal odpovídat (timeout).";
+"TLS handshake failed: %@" = "Navázání TLS selhalo: %@";
+"TLS handshake timed out." = "Navázání TLS vypršelo.";
+"Unexpected response format." = "Nečekaný formát odpovědi.";
+"Unexpected response: %@" = "Nečekaná odpověď: %@";
+"Cancelled" = "Zrušeno";
+"The live stream ended." = "Živé vysílání skončilo.";

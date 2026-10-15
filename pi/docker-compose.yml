@@ -1,0 +1,20 @@
+# Chirpie helper service.
+# Fill in your X account below (or put the same keys in a .env file next to this one, which never leaves the Pi).
+# Set CHIRPIE_KEY if you expose it past the LAN (e.g. through cloudflared). The session cookies are cached in the
+# ./data volume so the helper does not log in on every restart.
+services:
+  chirpie:
+    build: .
+    container_name: chirpie
+    restart: unless-stopped
+    ports:
+      - "8740:8740"
+    volumes:
+      - ./data:/data
+    environment:
+      - CHIRPIE_PORT=8740
+      - CHIRPIE_X_USERNAME=${CHIRPIE_X_USERNAME:-}
+      - CHIRPIE_X_EMAIL=${CHIRPIE_X_EMAIL:-}
+      - CHIRPIE_X_PASSWORD=${CHIRPIE_X_PASSWORD:-}
+      - CHIRPIE_X_TOTP=${CHIRPIE_X_TOTP:-}
+      # - CHIRPIE_KEY=change-me

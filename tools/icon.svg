@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6CC6FF"/>
+      <stop offset="0.5" stop-color="#2FA1F0"/>
+      <stop offset="1" stop-color="#1583D8"/>
+    </linearGradient>
+    <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.38"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0.06"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- full-bleed sky tile (UIPrerenderedIcon bakes the rounded corners later) -->
+  <rect x="0" y="0" width="1024" height="1024" fill="url(#sky)"/>
+
+  <!-- a bird in flight, white, with a dropped shadow for a little depth -->
+  <g transform="translate(0,14)">
+    <path fill="#0d5fa6" fill-opacity="0.25" transform="translate(0,16)"
+      d="M773 340
+         c-26 12 -54 20 -83 24 30 -18 53 -46 64 -80 -28 17 -59 29 -92 36
+         -27 -28 -65 -46 -107 -46 -81 0 -147 66 -147 147 0 12 1 23 4 33
+         -122 -6 -230 -65 -303 -154 -13 22 -20 47 -20 74 0 51 26 96 65 122
+         -24 -1 -47 -7 -67 -18 0 1 0 1 0 2 0 71 51 131 118 144 -12 3 -25 5 -39 5
+         -9 0 -19 -1 -28 -3 19 59 73 101 137 103 -50 39 -114 63 -183 63
+         -12 0 -24 -1 -35 -2 65 42 143 66 226 66 271 0 420 -225 420 -420
+         0 -6 0 -13 0 -19 29 -21 54 -47 74 -77 z"/>
+    <path fill="#ffffff"
+      d="M773 340
+         c-26 12 -54 20 -83 24 30 -18 53 -46 64 -80 -28 17 -59 29 -92 36
+         -27 -28 -65 -46 -107 -46 -81 0 -147 66 -147 147 0 12 1 23 4 33
+         -122 -6 -230 -65 -303 -154 -13 22 -20 47 -20 74 0 51 26 96 65 122
+         -24 -1 -47 -7 -67 -18 0 1 0 1 0 2 0 71 51 131 118 144 -12 3 -25 5 -39 5
+         -9 0 -19 -1 -28 -3 19 59 73 101 137 103 -50 39 -114 63 -183 63
+         -12 0 -24 -1 -35 -2 65 42 143 66 226 66 271 0 420 -225 420 -420
+         0 -6 0 -13 0 -19 29 -21 54 -47 74 -77 z"/>
+  </g>
+
+  <!-- top gloss, like the other iOS 6 icons -->
+  <rect x="0" y="0" width="1024" height="1024" fill="url(#gloss)"/>
+</svg>
