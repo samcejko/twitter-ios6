@@ -18,7 +18,6 @@ The user gets their cookies once, in a desktop browser logged in to x.com: DevTo
 https://x.com -> copy the values of `auth_token` and `ct0`, and paste them into the app's login screen.
 
 Settings (docker-compose.yml / env):
-    CHIRPIE_KEY    (optional) require ?k=<key> (or X-Chirpie-Key) on every call when exposed beyond the LAN
     CHIRPIE_PORT   (optional) the port, default 8740
 
 Cookies travel in the request headers (per user, never stored):
@@ -60,7 +59,6 @@ try:
 except ImportError:
     sys.exit("chirpie: twikit is not installed (pip install twikit)")
 
-KEY = os.environ.get("CHIRPIE_KEY", "")
 PORT = int(os.environ.get("CHIRPIE_PORT", "8740"))
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
       "Chrome/124.0.0.0 Safari/537.36")
@@ -563,11 +561,6 @@ class Handler(BaseHTTPRequestHandler):
         if self.command != "HEAD":
             self.wfile.write(body)
 
-    def _authorized(self, q):
-        if not KEY:
-            return True
-        return q.get("k", [""])[0] == KEY or self.headers.get("X-Chirpie-Key", "") == KEY
-
     def _cookies(self, q):
         auth = self.headers.get("X-Chirpie-Auth", "") or q.get("a", [""])[0]
         ct0 = self.headers.get("X-Chirpie-CT0", "") or q.get("c", [""])[0]
@@ -600,8 +593,6 @@ class Handler(BaseHTTPRequestHandler):
         one = lambda n, d="": q.get(n, [d])[0]
         if path == "/health":
             return self._send_json({"ok": True})
-        if not self._authorized(q):
-            return self._send_json({"error": "unauthorized"}, 401)
         if path == "/proxy":
             return self._proxy(one("u") or one("url"))
         routes = {
@@ -630,8 +621,6 @@ class Handler(BaseHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path.rstrip("/") or "/"
         q = urllib.parse.parse_qs(parsed.query)
-        if not self._authorized(q):
-            return self._send_json({"error": "unauthorized"}, 401)
         length = _int(self.headers.get("Content-Length", 0))
         try:
             body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
@@ -699,7 +688,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    sys.stderr.write("chirpie helper listening on :%d (key %s, multi-user cookie mode)\n" % (PORT, "set" if KEY else "off"))
+    sys.stderr.write("chirpie helper listening on :%d (multi-user cookie mode)\n" % PORT)
     ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()
 
 

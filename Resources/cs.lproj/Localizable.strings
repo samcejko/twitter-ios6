@@ -67,6 +67,7 @@
 
 /* Nastavení */
 "Server (your Raspberry Pi)" = "Server (tvoje Raspberry Pi)";
+"The helper on your Pi fetches the tweets. Enter its address, e.g. https://chirpie.samcejko.eu. 'Stream through the server' routes media through the Pi too - slower, but needed away from home." = "Pomocník na tvém Pi stahuje tweety. Zadej jeho adresu, např. https://chirpie.samcejko.eu. „Streamovat přes server\" pustí přes Pi i média — pomalejší, ale potřeba mimo domov.";
 "Server address" = "Adresa serveru";
 "Server key" = "Klíč serveru";
 "Test connection" = "Otestovat připojení";

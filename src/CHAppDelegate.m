@@ -119,7 +119,6 @@ static BOOL CHPressView(UIView *v, NSString *text)
     }
     if ([target isEqualToString:@"server"]) {
         if ([params[@"url"] length]) [CHSettings setServerBaseURL:params[@"url"]];
-        if (params[@"key"]) [CHSettings setServerKey:params[@"key"]];
         [CHUtils alertWithTitle:L(@"Settings") message:[CHSettings serverBaseURL].length ? [CHSettings serverBaseURL] : L(@"Not set")];
         return YES;
     }
@@ -132,8 +131,8 @@ static BOOL CHPressView(UIView *v, NSString *text)
         struct task_basic_info info; mach_msg_type_number_t count = TASK_BASIC_INFO_COUNT;
         if (task_info(mach_task_self(), TASK_BASIC_INFO, (task_info_t)&info, &count) == KERN_SUCCESS)
             CHLog(@"Memory: %.1f MB resident", info.resident_size / 1048576.0);
-        CHLog(@"Top: %@, server %@ (%@), bookmarks %lu", NSStringFromClass([top class]), [CHSettings serverBaseURL],
-              [CHSettings serverKey].length ? @"keyed" : @"no key", (unsigned long)[CHSettings savedTweets].count);
+        CHLog(@"Top: %@, server %@ (%@)", NSStringFromClass([top class]), [CHSettings serverBaseURL],
+              [CHSettings loggedIn] ? @"logged in" : @"logged out");
         return YES;
     }
     if ([target isEqualToString:@"lang"]) {

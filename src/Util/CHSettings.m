@@ -3,7 +3,6 @@
 #import "CHCommon.h"
 
 #define DEF [NSUserDefaults standardUserDefaults]
-static NSString * const CHServerKeyName = @"chirpie.serverKey";
 static NSString * const CHAuthName = @"chirpie.xAuthToken";
 static NSString * const CHCSRFName = @"chirpie.xCSRF";
 static const NSUInteger CHMaxSaved = 1000;
@@ -54,9 +53,6 @@ static const NSUInteger CHMaxSaved = 1000;
     [DEF setObject:s forKey:@"serverBaseURL"];
     [self notify];
 }
-
-+ (NSString *)serverKey { return [CHKeychain stringForKey:CHServerKeyName] ?: @""; }
-+ (void)setServerKey:(NSString *)value { [CHKeychain setString:value forKey:CHServerKeyName]; }
 
 + (BOOL)serverConfigured { return [self serverBaseURL].length > 0; }
 

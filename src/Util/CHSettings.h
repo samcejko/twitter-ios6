@@ -12,8 +12,6 @@
 
 + (NSString *)serverBaseURL;                 // trimmed, no trailing slash, "https://" added when missing
 + (void)setServerBaseURL:(NSString *)value;
-+ (NSString *)serverKey;                      // kept in the keychain
-+ (void)setServerKey:(NSString *)value;
 + (BOOL)serverConfigured;
 
 #pragma mark - The signed-in X account (cookies live only here, in the keychain)

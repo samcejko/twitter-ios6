@@ -1,6 +1,6 @@
 # Chirpie helper service (multi-user, stateless).
 # It stores NOTHING per user: each request carries the user's own X cookies and is signed with them once.
-# Set CHIRPIE_KEY if you expose it past the LAN (e.g. through cloudflared / nginx). Point those at 127.0.0.1:8740.
+# Expose it with cloudflared / nginx pointed at 127.0.0.1:8740; the app just needs the address.
 services:
   chirpie:
     build: .
@@ -10,4 +10,3 @@ services:
       - "8740:8740"
     environment:
       - CHIRPIE_PORT=8740
-      # - CHIRPIE_KEY=change-me

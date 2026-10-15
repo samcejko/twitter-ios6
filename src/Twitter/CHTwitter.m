@@ -43,8 +43,6 @@ static NSString *g_account;
         if (!s.length) continue;
         [pairs addObject:[NSString stringWithFormat:@"%@=%@", key, [CHUtils urlEncode:s]]];
     }
-    NSString *serverKey = [CHSettings serverKey];
-    if (serverKey.length) [pairs addObject:[NSString stringWithFormat:@"k=%@", [CHUtils urlEncode:serverKey]]];
     NSString *url = [base stringByAppendingString:path];
     if (pairs.count) url = [url stringByAppendingFormat:@"?%@", [pairs componentsJoinedByString:@"&"]];
     return url;

@@ -20,16 +20,20 @@ docker compose up -d --build
 curl http://<pi>:8740/health          # {"ok": true}
 ```
 
-Nothing to configure for sign-in - each user logs in from the app. Set `CHIRPIE_KEY` in `docker-compose.yml` only to
-gate access to the helper itself when you expose it past the LAN, and point your nginx/cloudflared at
-`http://127.0.0.1:8740`.
+Nothing to configure - each user logs in from the app. To share it, point your nginx/cloudflared at
+`http://127.0.0.1:8740` and hand out the address. There is no server key: the helper does nothing without a user's
+own cookies, so the address is all anyone needs.
 
 ## How a user logs in (what the app's login screen asks for)
 
 In a desktop browser logged in to **x.com**: open DevTools → Application (or Storage) → Cookies → `https://x.com`,
-and copy the values of **`auth_token`** and **`ct0`**. Paste them into Chirpie's login screen. They stay on the
-device; the app sends them with each request. (On an iOS device a cookie-viewer tweak / bookmarklet can read them
-too.) To sign out, the app clears them; nothing lives on the server.
+and copy the values of **`auth_token`** and **`ct0`**. Paste them into Chirpie's login screen (the Cookies tab).
+They stay on the device; the app sends them with each request. (On an iOS device a cookie-viewer tweak / bookmarklet
+can read them too.) To sign out, the app clears them; nothing lives on the server.
+
+The login screen also has a **Password** tab (username + password, behind a consent note): the password is sent over
+HTTPS, used once here via `POST /login` to fetch the cookies, and never stored or logged - only the cookies come
+back to the device. Cookies are the safer option; the password one is just for convenience.
 
 ## Keep it working
 

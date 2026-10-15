@@ -13,7 +13,6 @@ typedef enum { SecAccount, SecServer, SecTimeline, SecAppearance, SecNetwork, Se
 
 @interface CHSettingsViewController () <UITextFieldDelegate>
 @property (nonatomic, strong) UITextField *addressField;
-@property (nonatomic, strong) UITextField *keyField;
 @property (nonatomic, copy) NSString *account;      // the signed-in @handle (from /me)
 @end
 
@@ -60,7 +59,7 @@ typedef enum { SecAccount, SecServer, SecTimeline, SecAppearance, SecNetwork, Se
 {
     switch (section) {
         case SecAccount: return [CHTwitter loggedIn] ? 2 : 1;   // (@handle, log out) | (log in)
-        case SecServer: return 4;       // address, key, test, stream-through
+        case SecServer: return 3;       // address, test, stream-through
         case SecTimeline: return 2;     // autoplay, sensitive
         case SecAppearance: return 1;   // dark
         case SecNetwork: return 1;      // verify TLS
@@ -86,7 +85,7 @@ typedef enum { SecAccount, SecServer, SecTimeline, SecAppearance, SecNetwork, Se
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section
 {
-    if (section == SecServer) return L(@"The helper on your Pi signs in to X and fetches the tweets. Enter its address, e.g. https://chirpie.samcejko.eu, and the key if you set one. 'Stream through the server' routes media through the Pi too - slower, but needed away from home.");
+    if (section == SecServer) return L(@"The helper on your Pi fetches the tweets. Enter its address, e.g. https://chirpie.samcejko.eu. 'Stream through the server' routes media through the Pi too - slower, but needed away from home.");
     if (section == SecNetwork) return L(@"Turn verification off only to reach a server with a self-signed certificate.");
     return nil;
 }
@@ -156,11 +155,7 @@ typedef enum { SecAccount, SecServer, SecTimeline, SecAppearance, SecNetwork, Se
                 if (!self.addressField) { self.addressField = [[UITextField alloc] init]; self.addressField.keyboardType = UIKeyboardTypeURL; self.addressField.text = [CHSettings serverBaseURL]; }
                 return [self fieldCell:tableView field:self.addressField label:L(@"Server address")];
             }
-            if (indexPath.row == 1) {
-                if (!self.keyField) { self.keyField = [[UITextField alloc] init]; self.keyField.secureTextEntry = YES; self.keyField.text = [CHSettings serverKey]; }
-                return [self fieldCell:tableView field:self.keyField label:L(@"Server key")];
-            }
-            if (indexPath.row == 2) return [self plainCell:tableView title:L(@"Test connection") blue:YES];
+            if (indexPath.row == 1) return [self plainCell:tableView title:L(@"Test connection") blue:YES];
             return [self switchCell:tableView title:L(@"Stream through the server") on:[CHSettings streamThroughServer] action:@selector(toggleStream:)];
         case SecTimeline:
             if (indexPath.row == 0) return [self switchCell:tableView title:L(@"Autoplay videos") on:[CHSettings autoplayVideos] action:@selector(toggleAutoplay:)];
@@ -218,7 +213,7 @@ typedef enum { SecAccount, SecServer, SecTimeline, SecAppearance, SecNetwork, Se
         else [self logOut];
         return;
     }
-    if (indexPath.section == SecServer && indexPath.row == 2) { [self testConnection]; return; }
+    if (indexPath.section == SecServer && indexPath.row == 1) { [self testConnection]; return; }
     if (indexPath.section == SecData) {
         if (indexPath.row == 0) [self clearImageCache];
         else [self clearBookmarks];
@@ -287,7 +282,6 @@ typedef enum { SecAccount, SecServer, SecTimeline, SecAppearance, SecNetwork, Se
 - (void)saveFields
 {
     if (self.addressField) [CHSettings setServerBaseURL:self.addressField.text];
-    if (self.keyField) [CHSettings setServerKey:self.keyField.text];
     [CHSettings save];
 }
 
