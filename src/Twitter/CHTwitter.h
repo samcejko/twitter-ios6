@@ -3,13 +3,18 @@
 
 @class CHHTTPTask;
 
+// Posted (main thread) when a request comes back needing a login (missing / expired X cookies).
+extern NSString * const CHNeedsLoginNotification;
+
 // Talks to the Pi helper (the only server this app needs). The helper signs in to X once with your account and
 // turns its answers into the small JSON these methods parse. All completions run on the main thread.
 @interface CHTwitter : NSObject
 
 + (BOOL)configured;                          // a server base URL is set
-+ (void)checkHealth:(void (^)(BOOL ok, NSString *info, NSError *error))completion;
-+ (NSString *)accountHandle;                 // the signed-in @handle once /health has reported it, else nil
++ (BOOL)loggedIn;                            // a server is set AND the X cookies are present
++ (void)checkHealth:(void (^)(BOOL ok, NSString *info, NSError *error))completion;   // just the service (no cookies)
++ (void)fetchMe:(void (^)(CHUser *user, NSError *error))completion;                  // the signed-in account for the cookies
++ (NSString *)accountHandle;                 // the signed-in @handle once /me has reported it, else nil
 
 // The home timeline. `following` = the Following feed rather than For You. `cursor` is a page's bottomCursor (nil =
 // the top).

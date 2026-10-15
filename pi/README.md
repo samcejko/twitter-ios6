@@ -1,53 +1,59 @@
 # Chirpie helper (Raspberry Pi)
 
-The small service the iOS 6 app (Chirpie) talks to. It signs in once with **your** X / Twitter account, keeps the
-session, and hands the app tiny JSON. Images and videos stream from Twitter's own CDN (`pbs.twimg.com`,
-`video.twimg.com`); only `/proxy` moves the bytes through the Pi (the fallback away from home). Read-only: the app
-only reads what your account can see - it never posts, likes, follows or sends anything.
+The small service the iOS 6 app (Chirpie) talks to. X's web API needs a login session, a CSRF token and a rotating
+`x-client-transaction-id` header that is computed by obfuscated JavaScript - none of which iOS 6 can do. This helper
+does it with `twikit` and hands the app tiny JSON.
 
-> **Account note.** This signs in to X the way a browser does (the unofficial web API, through `twikit`), not the
-> paid API. Use an account you are willing to risk - automated access can get an account rate-limited or locked. Put
-> the credentials only here, on your own machine.
+**Multi-user and stateless.** It stores nothing. Each request carries the user's own X cookies (`auth_token` + `ct0`)
+in headers; the helper signs that one request with them and forgets them. Many people can share one helper, each with
+their own account. No password ever reaches the server. Images and videos stream from Twitter's CDN straight to the
+device (the app does its own TLS); only `/proxy` moves bytes through the helper (fallback away from home).
+
+> **Account note.** This signs in to X the unofficial-web-API way (through `twikit`), not the paid API. Automated
+> access can get an account rate-limited or locked. Everyone shares this helper's IP for the API calls, so keep it to
+> people you trust and expect occasional rate-limiting if a lot of accounts hammer it.
 
 ## Run
 
 ```sh
-# put your account in a .env file next to docker-compose.yml (it never leaves the Pi):
-#   CHIRPIE_X_USERNAME=yourhandle
-#   CHIRPIE_X_EMAIL=you@example.com
-#   CHIRPIE_X_PASSWORD=your-password
-#   CHIRPIE_X_TOTP=ABCD...        # only if the account has two-factor auth (the secret, not a code)
 docker compose up -d --build
-curl http://<pi>:8740/health        # {"ok": true, "account": "yourhandle"}
+curl http://<pi>:8740/health          # {"ok": true}
 ```
 
-The session cookies are cached in `./data/cookies.json`, so the helper logs in once and reuses it after that.
+Nothing to configure for sign-in - each user logs in from the app. Set `CHIRPIE_KEY` in `docker-compose.yml` only to
+gate access to the helper itself when you expose it past the LAN, and point your nginx/cloudflared at
+`http://127.0.0.1:8740`.
+
+## How a user logs in (what the app's login screen asks for)
+
+In a desktop browser logged in to **x.com**: open DevTools → Application (or Storage) → Cookies → `https://x.com`,
+and copy the values of **`auth_token`** and **`ct0`**. Paste them into Chirpie's login screen. They stay on the
+device; the app sends them with each request. (On an iOS device a cookie-viewer tweak / bookmarklet can read them
+too.) To sign out, the app clears them; nothing lives on the server.
 
 ## Keep it working
 
-X changes often; `twikit` is the maintained piece. When something stops working:
+`twikit` is the maintained piece. When X changes something:
 
 ```sh
 pip install -U twikit    # or: docker compose build --no-cache && docker compose up -d
 ```
 
-## Exposing beyond the LAN
-
-Set `CHIRPIE_KEY` in `docker-compose.yml`; the app must then send `?k=<key>` (or the `X-Chirpie-Key` header). Point
-your existing nginx / cloudflared at `http://127.0.0.1:8740`. In the app: Settings → the server address (and key).
-
 ## Endpoints
+
+Cookies travel in headers (`X-Chirpie-Auth` = auth_token, `X-Chirpie-CT0` = ct0), never stored.
 
 | path | returns |
 |------|---------|
-| `/health` | `{ok, account}` - the signed-in `@handle` |
+| `/health` | `{ok}` - service up (no cookies needed) |
+| `/me` | the signed-in account for the given cookies |
 | `/timeline?feed=foryou\|following&cursor=` | a page of the home timeline |
-| `/user?name=<handle>` | `{user}` - name, bio, avatar, banner, counts |
-| `/tweets?name=&id=&kind=tweets\|replies\|media\|likes&cursor=` | a person's tweets |
-| `/tweet?id=&cursor=` | `{tweet, ancestors, replies, cursor, hasMore}` |
-| `/search?q=&kind=top\|latest\|people&cursor=` | tweets, or people |
-| `/trends` | `{items:[{name, query, volume, context}]}` |
-| `/proxy?u=` | the media bytes (twimg.com hosts only), Range supported |
-
-Each list returns `{tweets:[…], bottom:"<cursor>", hasMore:bool}` (people search adds `users`). The app passes
-`bottom` back as `cursor` for the next page.
+| `/user?name=` · `/tweets?name=&id=&kind=&cursor=` | a profile · their tweets |
+| `/tweet?id=&cursor=` | a tweet with its thread |
+| `/search?q=&kind=top\|latest\|people&cursor=` · `/trends` | search · trends |
+| `/bookmarks` · `/notifications?kind=all\|mentions` | your bookmarks · notifications |
+| `/followers?name=&id=` · `/following?…` | people lists |
+| `/action?do=like\|unlike\|retweet\|unretweet\|bookmark\|unbookmark\|delete\|follow\|unfollow&id=` | a write action |
+| `POST /post` `{text,replyTo,quoteUrl,imageB64,imageType}` | a tweet / reply / quote |
+| `GET /dm/list` · `GET /dm/history?name=&id=` · `POST /dm/send` `{name\|id,text}` | direct messages |
+| `/proxy?u=` | media bytes (twimg.com hosts only), Range supported (no cookies) |

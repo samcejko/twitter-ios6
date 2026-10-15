@@ -18,4 +18,6 @@ English and Czech, in the classic iOS 6 blue-bird style. Five tabs: Home, Explor
 - **Notifications** (All / Mentions) and **Direct Messages** (conversations and sending).
 - Retweets, quote tweets, reply context, verified badges, counts and view counts; dark and light themes; the
   sister-app link chooser (Tubie / Twitcher / Kicker / TikTak / Surfari).
-- A helper (`pi/`) that signs in with your own X account through `twikit` and does the reading and the actions.
+- Multi-user: each person signs in with their own X cookies (auth_token + ct0), kept only on the device. The helper
+  (`pi/`) is stateless - it signs each request with the sender's cookies through `twikit` and stores nothing - so one
+  helper can serve many people, each with their own account.

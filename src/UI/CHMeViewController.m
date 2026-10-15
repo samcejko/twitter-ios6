@@ -41,13 +41,14 @@
 {
     if (self.profile || self.resolving) return;
     if (![CHTwitter configured]) { self.status.text = L(@"Set your server address in Settings to see your profile."); self.status.hidden = NO; return; }
+    if (![CHTwitter loggedIn]) { self.status.text = L(@"Log in with your X account to see your profile."); self.status.hidden = NO; return; }
     NSString *known = [CHTwitter accountHandle];
     if (known.length) { [self embed:known]; return; }
     self.resolving = YES;
-    [CHTwitter checkHealth:^(BOOL ok, NSString *info, NSError *error) {
+    [CHTwitter fetchMe:^(CHUser *user, NSError *error) {
         self.resolving = NO;
-        if (info.length) [self embed:info];
-        else { self.status.text = error.localizedDescription ?: L(@"The helper is not signed in yet."); self.status.hidden = NO; }
+        if (user.handle.length) [self embed:user.handle];
+        else { self.status.text = error.localizedDescription ?: L(@"Could not load your profile."); self.status.hidden = NO; }
     }];
 }
 

@@ -1,4 +1,5 @@
 #import "CHSettingsViewController.h"
+#import "CHLoginViewController.h"
 #import "CHLinkRouter.h"
 #import "CHExternalOpen.h"
 #import "CHImageLoader.h"
@@ -8,12 +9,12 @@
 #import "CHUtils.h"
 #import "CHCommon.h"
 
-typedef enum { SecServer, SecTimeline, SecAppearance, SecNetwork, SecData, SecAbout, SecCount } CHSection;
+typedef enum { SecAccount, SecServer, SecTimeline, SecAppearance, SecNetwork, SecData, SecAbout, SecCount } CHSection;
 
 @interface CHSettingsViewController () <UITextFieldDelegate>
 @property (nonatomic, strong) UITextField *addressField;
 @property (nonatomic, strong) UITextField *keyField;
-@property (nonatomic, copy) NSString *account;      // the signed-in @handle the helper reports
+@property (nonatomic, copy) NSString *account;      // the signed-in @handle (from /me)
 @end
 
 @implementation CHSettingsViewController
@@ -35,10 +36,19 @@ typedef enum { SecServer, SecTimeline, SecAppearance, SecNetwork, SecData, SecAb
     [self dismissViewControllerAnimated:YES completion:nil];
 }
 
+- (void)viewWillAppear:(BOOL)animated
+{
+    [super viewWillAppear:animated];
+    [self.tableView reloadData];     // reflect a login/logout that happened in a sheet above
+    [self loadAccount];
+}
+
 - (void)loadAccount
 {
-    [CHTwitter checkHealth:^(BOOL ok, NSString *info, NSError *error) {
-        if (ok && info.length) { self.account = info; [self.tableView reloadData]; }
+    if (![CHTwitter loggedIn]) return;
+    self.account = [CHTwitter accountHandle];
+    [CHTwitter fetchMe:^(CHUser *user, NSError *error) {
+        if (user.handle.length) { self.account = user.handle; [self.tableView reloadData]; }
     }];
 }
 
@@ -49,11 +59,12 @@ typedef enum { SecServer, SecTimeline, SecAppearance, SecNetwork, SecData, SecAb
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
 {
     switch (section) {
+        case SecAccount: return [CHTwitter loggedIn] ? 2 : 1;   // (@handle, log out) | (log in)
         case SecServer: return 4;       // address, key, test, stream-through
         case SecTimeline: return 2;     // autoplay, sensitive
         case SecAppearance: return 1;   // dark
         case SecNetwork: return 1;      // verify TLS
-        case SecData: return [CHTwitter configured] ? 3 : 2;   // my profile?, clear cache, clear bookmarks
+        case SecData: return 2;         // clear cache, clear bookmarks
         case SecAbout: return 3;        // version, about, support
     }
     return 0;
@@ -62,6 +73,7 @@ typedef enum { SecServer, SecTimeline, SecAppearance, SecNetwork, SecData, SecAb
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section
 {
     switch (section) {
+        case SecAccount: return L(@"Account");
         case SecServer: return L(@"Server (your Raspberry Pi)");
         case SecTimeline: return L(@"Timeline");
         case SecAppearance: return L(@"Appearance");
@@ -129,6 +141,16 @@ typedef enum { SecServer, SecTimeline, SecAppearance, SecNetwork, SecData, SecAb
 {
     CHTheme *th = [CHTheme shared];
     switch (indexPath.section) {
+        case SecAccount:
+            if ([CHTwitter loggedIn]) {
+                if (indexPath.row == 0) {
+                    UITableViewCell *c = [self plainCell:tableView title:(self.account.length ? [@"@" stringByAppendingString:self.account] : L(@"My profile")) blue:NO];
+                    c.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+                    return c;
+                }
+                return [self plainCell:tableView title:L(@"Log out") blue:YES];
+            }
+            return [self plainCell:tableView title:L(@"Log in") blue:YES];
         case SecServer:
             if (indexPath.row == 0) {
                 if (!self.addressField) { self.addressField = [[UITextField alloc] init]; self.addressField.keyboardType = UIKeyboardTypeURL; self.addressField.text = [CHSettings serverBaseURL]; }
@@ -147,13 +169,9 @@ typedef enum { SecServer, SecTimeline, SecAppearance, SecNetwork, SecData, SecAb
             return [self switchCell:tableView title:L(@"Dark theme") on:th.isDark action:@selector(toggleDark:)];
         case SecNetwork:
             return [self switchCell:tableView title:L(@"Verify certificates") on:[CHSettings verifyTLS] action:@selector(toggleTLS:)];
-        case SecData: {
-            NSInteger row = indexPath.row;
-            if (![CHTwitter configured]) row += 1;   // no "My profile" row when not configured
-            if (row == 0) { UITableViewCell *c = [self plainCell:tableView title:L(@"View my profile") blue:NO]; c.accessoryType = UITableViewCellAccessoryDisclosureIndicator; return c; }
-            if (row == 1) return [self plainCell:tableView title:L(@"Clear image cache") blue:NO];
+        case SecData:
+            if (indexPath.row == 0) return [self plainCell:tableView title:L(@"Clear image cache") blue:NO];
             return [self plainCell:tableView title:L(@"Clear bookmarks") blue:NO];
-        }
         case SecAbout: {
             if (indexPath.row == 0) {
                 UITableViewCell *c = [self plainCell:tableView title:L(@"Version") blue:NO];
@@ -194,11 +212,15 @@ typedef enum { SecServer, SecTimeline, SecAppearance, SecNetwork, SecData, SecAb
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
+    if (indexPath.section == SecAccount) {
+        if (![CHTwitter loggedIn]) { [self logIn]; return; }
+        if (indexPath.row == 0) [self openMyProfile];
+        else [self logOut];
+        return;
+    }
     if (indexPath.section == SecServer && indexPath.row == 2) { [self testConnection]; return; }
     if (indexPath.section == SecData) {
-        NSInteger row = indexPath.row + (![CHTwitter configured] ? 1 : 0);
-        if (row == 0) [self openMyProfile];
-        else if (row == 1) [self clearImageCache];
+        if (indexPath.row == 0) [self clearImageCache];
         else [self clearBookmarks];
         return;
     }
@@ -210,21 +232,35 @@ typedef enum { SecServer, SecTimeline, SecAppearance, SecNetwork, SecData, SecAb
 {
     [self saveFields];
     if (![CHTwitter configured]) { [CHUtils alertWithTitle:L(@"Test connection") message:L(@"Set the server address first.")]; return; }
-    [CHUtils alertWithTitle:L(@"Test connection") message:L(@"Checking…")];
     [CHTwitter checkHealth:^(BOOL ok, NSString *info, NSError *error) {
-        NSString *msg = ok ? (info.length ? [NSString stringWithFormat:L(@"Connected as @%@."), info] : L(@"The server is up.")) :
-                             (error.localizedDescription ?: L(@"The server did not answer."));
-        [CHUtils alertWithTitle:L(@"Test connection") message:msg];
-        if (ok && info.length) { self.account = info; [self.tableView reloadData]; }
+        [CHUtils alertWithTitle:L(@"Test connection") message:(ok ? L(@"The server is up.") : (error.localizedDescription ?: L(@"The server did not answer.")))];
     }];
+}
+
+- (void)logIn
+{
+    [self saveFields];
+    CHLoginViewController *login = [[CHLoginViewController alloc] init];
+    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:login];
+    [[CHTheme shared] applyToNavigationBar:nav.navigationBar];
+    if (CHIsPad()) nav.modalPresentationStyle = UIModalPresentationFormSheet;
+    [self presentViewController:nav animated:YES completion:nil];
+}
+
+- (void)logOut
+{
+    [CHSettings logOut];
+    self.account = nil;
+    [self.tableView reloadData];
 }
 
 - (void)openMyProfile
 {
-    if (self.account.length) { [self dismissViewControllerAnimated:YES completion:^{ [CHLinkRouter openProfile:self.account]; }]; return; }
-    [CHTwitter checkHealth:^(BOOL ok, NSString *info, NSError *error) {
-        if (ok && info.length) { self.account = info; [self dismissViewControllerAnimated:YES completion:^{ [CHLinkRouter openProfile:info]; }]; }
-        else [CHUtils alertWithTitle:L(@"My profile") message:error.localizedDescription ?: L(@"The helper did not report a signed-in account.")];
+    NSString *h = [CHTwitter accountHandle] ?: self.account;
+    if (h.length) { [self dismissViewControllerAnimated:YES completion:^{ [CHLinkRouter openProfile:h]; }]; return; }
+    [CHTwitter fetchMe:^(CHUser *user, NSError *error) {
+        if (user.handle.length) [self dismissViewControllerAnimated:YES completion:^{ [CHLinkRouter openProfile:user.handle]; }];
+        else [CHUtils alertWithTitle:L(@"My profile") message:error.localizedDescription ?: L(@"Could not load your profile.")];
     }];
 }
 

@@ -7,7 +7,6 @@ COPY chirpie_server.py /app/chirpie_server.py
 WORKDIR /app
 
 ENV CHIRPIE_PORT=8740
-ENV CHIRPIE_COOKIES=/data/cookies.json
 EXPOSE 8740
 
 # twikit is the part that ages; rebuild (or `pip install -U twikit` in the container) when X changes.

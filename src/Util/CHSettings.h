@@ -15,6 +15,15 @@
 + (NSString *)serverKey;                      // kept in the keychain
 + (void)setServerKey:(NSString *)value;
 + (BOOL)serverConfigured;
+
+#pragma mark - The signed-in X account (cookies live only here, in the keychain)
+
++ (NSString *)xAuthToken;                      // the auth_token cookie
++ (void)setXAuthToken:(NSString *)value;
++ (NSString *)xCSRF;                           // the ct0 cookie
++ (void)setXCSRF:(NSString *)value;
++ (BOOL)loggedIn;                              // both cookies present
++ (void)logOut;                                // forget the cookies
 + (BOOL)streamThroughServer;                  // route media through the Pi too (slower, needed away from home)
 + (void)setStreamThroughServer:(BOOL)value;
 

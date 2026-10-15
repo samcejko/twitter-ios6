@@ -10,24 +10,28 @@ compose (with a photo) and direct messages.
 Everything runs through **your own X account** on your own server. Chirpie is not affiliated with, endorsed by or
 associated with X Corp or Twitter.
 
-## How it works (and why it needs your own server)
+## How it works (and why it needs a helper)
 
-X's app API is locked behind request signing that cannot be reproduced on iOS 6, and logged-out access gives almost
-nothing any more, so Chirpie does not talk to X directly. Instead a tiny helper (the `chirpie` service) runs on your
-own machine (a Raspberry Pi is perfect). It signs in **once with your own X account**, keeps the session, and hands
-the app small JSON. The pictures and videos stream straight from Twitter's CDN to the device through Chirpie's own
-TLS layer (iOS 6 cannot talk to modern servers otherwise); away from home, the helper can also stream the bytes
-itself.
+X's web API needs a login session, a CSRF token and a rotating `x-client-transaction-id` header computed by
+obfuscated JavaScript - none of which iOS 6 can produce - and logged-out access gives almost nothing any more. So
+Chirpie does not talk to X directly. A tiny helper (the `chirpie` service) runs on a server (a Raspberry Pi is
+perfect) and does the signing with `twikit`.
 
-So: one small service on your server, and the app is a thin, private client. When X changes something, you update
-`twikit` on the server - the app does not need rebuilding.
+The helper is **multi-user and stateless**: it stores nothing. Each person signs in with their **own** X cookies
+(`auth_token` + `ct0`), which stay on their device and travel with each request; the helper signs that one request
+and forgets them. One helper can serve many people, each with their own account - no password ever reaches the
+server. Pictures and videos stream straight from Twitter's CDN to the device through Chirpie's own TLS layer (iOS 6
+cannot talk to modern servers otherwise); away from home, the helper can also stream the bytes.
 
-See [`pi/README.md`](pi/README.md) to run the helper (Docker). Then in the app: Settings - the gear in the bar - set
-the server address (e.g. `https://chirpie.samcejko.eu`) and, if you set one, the key.
+When X changes something, you update `twikit` on the server - the app does not need rebuilding.
 
-> **Account note.** The helper signs in the way a browser does (the unofficial web API), not the paid API. Use an
-> account you are willing to risk; automated access can get an account rate-limited or locked. Your credentials live
-> only on your own server, never in the app or this repository.
+See [`pi/README.md`](pi/README.md) to run the helper (Docker). Then in the app: Settings → set the server address
+(e.g. `https://chirpie.samcejko.eu`), then **Log in** and paste your `auth_token` and `ct0` from a browser signed in
+to x.com (Settings → Account, or the prompt that appears).
+
+> **Account note.** This signs in the unofficial-web-API way (through `twikit`), not the paid API. Automated access
+> can get an account rate-limited or locked, and everyone on one helper shares its IP, so keep a shared helper to
+> people you trust. No password reaches the server; cookies live only on each device.
 
 ## Using it
 

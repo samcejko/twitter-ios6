@@ -170,3 +170,15 @@
 "Who do you want to message?" = "Komu chceš napsat?";
 "Set your server address in Settings to see your profile." = "Pro zobrazení profilu nastav adresu serveru v Nastavení.";
 "The helper is not signed in yet." = "Pomocník zatím není přihlášený.";
+
+/* Přihlášení přes cookies (multi-user) */
+"Account" = "Účet";
+"Log in" = "Přihlásit";
+"Log out" = "Odhlásit";
+"Your X cookies" = "Tvoje X cookies";
+"Paste both auth_token and ct0." = "Vlož auth_token i ct0.";
+"Log in with your X account to continue." = "Pro pokračování se přihlas svým X účtem.";
+"Log in with your X account to see your profile." = "Pro zobrazení profilu se přihlas svým X účtem.";
+"Could not load your profile." = "Profil se nepodařilo načíst.";
+"Those cookies did not work. Check you copied auth_token and ct0 from x.com while signed in." = "Tyhle cookies nefungují. Zkontroluj, že jsi zkopíroval auth_token a ct0 z x.com v přihlášeném stavu.";
+"In a desktop browser signed in to x.com: open the developer tools → Application → Cookies → https://x.com, and copy the values of auth_token and ct0. They stay on this device and are sent with each request; nothing is stored on the server. On this device, a cookie-viewer tweak can read them too." = "V prohlížeči na počítači přihlášeném na x.com: otevři vývojářské nástroje → Application → Cookies → https://x.com a zkopíruj hodnoty auth_token a ct0. Zůstanou jen na tomhle zařízení a posílají se s každým požadavkem; na serveru se neukládá nic. Na tomhle zařízení je umí přečíst i tweak na prohlížení cookies.";

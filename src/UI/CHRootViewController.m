@@ -4,6 +4,9 @@
 #import "CHNotificationsViewController.h"
 #import "CHMessagesViewController.h"
 #import "CHMeViewController.h"
+#import "CHLoginViewController.h"
+#import "CHTwitter.h"
+#import "CHSettings.h"
 #import "CHTheme.h"
 #import "CHCommon.h"
 
@@ -62,6 +65,8 @@ static UIImage *CHTabIcon(NSString *name)
         }
         self.viewControllers = navs;
         [th applyToTabBar:self.tabBar];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(needsLogin) name:CHNeedsLoginNotification object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(settingsChanged) name:CHSettingsDidChangeNotification object:nil];
     }
     return self;
 }
@@ -70,6 +75,39 @@ static UIImage *CHTabIcon(NSString *name)
 {
     if (index >= 0 && index < (NSInteger)self.viewControllers.count) self.selectedIndex = (NSUInteger)index;
 }
+
+- (BOOL)loginOnScreen
+{
+    UIViewController *p = self.presentedViewController;
+    if ([p isKindOfClass:[UINavigationController class]]) p = [(UINavigationController *)p topViewController];
+    return [p isKindOfClass:[CHLoginViewController class]];
+}
+
+- (void)presentLogin
+{
+    if (![CHTwitter configured] || [CHSettings loggedIn] || [self loginOnScreen] || self.presentedViewController) return;
+    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:[[CHLoginViewController alloc] init]];
+    [[CHTheme shared] applyToNavigationBar:nav.navigationBar];
+    if (CHIsPad()) nav.modalPresentationStyle = UIModalPresentationFormSheet;
+    [self presentViewController:nav animated:YES completion:nil];
+}
+
+- (void)needsLogin { [self presentLogin]; }
+
+// After a login or a settings change, refresh the tab the user is looking at (others refresh on their next appear)
+- (void)settingsChanged
+{
+    UIViewController *vc = self.selectedViewController;
+    if ([vc isKindOfClass:[UINavigationController class]]) vc = [(UINavigationController *)vc topViewController];
+    if ([vc respondsToSelector:@selector(reload)]) {
+        #pragma clang diagnostic push
+        #pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+        [vc performSelector:@selector(reload)];
+        #pragma clang diagnostic pop
+    }
+}
+
+- (void)dealloc { [[NSNotificationCenter defaultCenter] removeObserver:self]; }
 
 - (NSUInteger)supportedInterfaceOrientations
 {

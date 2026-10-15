@@ -4,6 +4,8 @@
 
 #define DEF [NSUserDefaults standardUserDefaults]
 static NSString * const CHServerKeyName = @"chirpie.serverKey";
+static NSString * const CHAuthName = @"chirpie.xAuthToken";
+static NSString * const CHCSRFName = @"chirpie.xCSRF";
 static const NSUInteger CHMaxSaved = 1000;
 
 @implementation CHSettings
@@ -57,6 +59,13 @@ static const NSUInteger CHMaxSaved = 1000;
 + (void)setServerKey:(NSString *)value { [CHKeychain setString:value forKey:CHServerKeyName]; }
 
 + (BOOL)serverConfigured { return [self serverBaseURL].length > 0; }
+
++ (NSString *)xAuthToken { return [CHKeychain stringForKey:CHAuthName] ?: @""; }
++ (void)setXAuthToken:(NSString *)value { [CHKeychain setString:value forKey:CHAuthName]; }
++ (NSString *)xCSRF { return [CHKeychain stringForKey:CHCSRFName] ?: @""; }
++ (void)setXCSRF:(NSString *)value { [CHKeychain setString:value forKey:CHCSRFName]; }
++ (BOOL)loggedIn { return [self xAuthToken].length > 0 && [self xCSRF].length > 0; }
++ (void)logOut { [self setXAuthToken:@""]; [self setXCSRF:@""]; [self notify]; }
 
 + (BOOL)streamThroughServer { return [DEF boolForKey:@"streamThroughServer"]; }
 + (void)setStreamThroughServer:(BOOL)value { [DEF setBool:value forKey:@"streamThroughServer"]; [self notify]; }

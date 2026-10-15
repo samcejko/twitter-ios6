@@ -4,12 +4,31 @@
 #import "CHUtils.h"
 #import "CHCommon.h"
 
+NSString * const CHNeedsLoginNotification = @"CHNeedsLoginNotification";
+
 static NSString *g_account;
 
 @implementation CHTwitter
 
 + (BOOL)configured { return [CHSettings serverConfigured]; }
++ (BOOL)loggedIn { return [CHSettings serverConfigured] && [CHSettings loggedIn]; }
 + (NSString *)accountHandle { return g_account.length ? g_account : nil; }
+
+// The user's X cookies travel in headers (never in the URL); the server key stays a query param (in urlForPath)
++ (NSDictionary *)authHeaders
+{
+    NSMutableDictionary *h = [NSMutableDictionary dictionary];
+    NSString *auth = [CHSettings xAuthToken], *ct0 = [CHSettings xCSRF];
+    if (auth.length) h[@"X-Chirpie-Auth"] = auth;
+    if (ct0.length) h[@"X-Chirpie-CT0"] = ct0;
+    return h;
+}
+
++ (void)noteIfNeedsLogin:(NSDictionary *)json status:(NSInteger)status
+{
+    if (status == 401 || CHBool(json[@"needsLogin"]))
+        CHMain(^{ [[NSNotificationCenter defaultCenter] postNotificationName:CHNeedsLoginNotification object:nil]; });
+}
 
 // base URL + path + query (the server key goes on every call as ?k=)
 + (NSString *)urlForPath:(NSString *)path params:(NSDictionary *)params
@@ -40,8 +59,14 @@ static NSString *g_account;
         CHMain(^{ if (completion) completion(nil, CHMakeError(CHErrorAPI, L(@"Set the server address in Settings first."))); });
         return nil;
     }
-    return [CHHTTP getJSON:url headers:nil completion:^(id json, NSInteger status, NSError *error) {
+    if (![path isEqualToString:@"/health"] && ![CHSettings loggedIn]) {
+        [self noteIfNeedsLogin:nil status:401];
+        CHMain(^{ if (completion) completion(nil, CHMakeError(CHErrorAuth, L(@"Log in with your X account to continue."))); });
+        return nil;
+    }
+    return [CHHTTP getJSON:url headers:[self authHeaders] completion:^(id json, NSInteger status, NSError *error) {
         NSDictionary *d = [json isKindOfClass:[NSDictionary class]] ? json : nil;
+        [self noteIfNeedsLogin:d status:status];
         NSError *err = error;
         if (!err && d[@"error"]) err = CHMakeError(status ?: CHErrorAPI, CHStr(d[@"error"]));
         if (completion) completion(d, err);
@@ -52,9 +77,16 @@ static NSString *g_account;
 {
     [self get:@"/health" params:nil completion:^(NSDictionary *json, NSError *error) {
         BOOL ok = !error && CHBool(json[@"ok"]);
-        NSString *info = CHStr(json[@"account"]);   // the signed-in @handle, when the helper reports it
-        if (info.length) g_account = info;
-        if (completion) completion(ok, info, error);
+        if (completion) completion(ok, nil, error);
+    }];
+}
+
++ (void)fetchMe:(void (^)(CHUser *user, NSError *error))completion
+{
+    [self get:@"/me" params:nil completion:^(NSDictionary *json, NSError *error) {
+        CHUser *user = error ? nil : [CHUser userFromJSON:json[@"user"]];
+        if (user.handle.length) g_account = user.handle;
+        if (completion) completion(user, error);
     }];
 }
 
@@ -182,8 +214,14 @@ static NSString *g_account;
 {
     NSString *url = [self urlForPath:path params:nil];
     if (!url) { CHMain(^{ if (completion) completion(nil, CHMakeError(CHErrorAPI, L(@"Set the server address in Settings first."))); }); return; }
-    [CHHTTP postJSON:url headers:nil object:object retries:0 completion:^(id json, NSInteger status, NSError *error) {
+    if (![CHSettings loggedIn]) {
+        [self noteIfNeedsLogin:nil status:401];
+        CHMain(^{ if (completion) completion(nil, CHMakeError(CHErrorAuth, L(@"Log in with your X account to continue."))); });
+        return;
+    }
+    [CHHTTP postJSON:url headers:[self authHeaders] object:object retries:0 completion:^(id json, NSInteger status, NSError *error) {
         NSDictionary *d = [json isKindOfClass:[NSDictionary class]] ? json : nil;
+        [self noteIfNeedsLogin:d status:status];
         NSError *err = error;
         if (!err && d[@"error"]) err = CHMakeError(status ?: CHErrorAPI, CHStr(d[@"error"]));
         if (completion) completion(d, err);
