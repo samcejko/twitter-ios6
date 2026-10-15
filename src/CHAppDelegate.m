@@ -1,5 +1,6 @@
 #import "CHAppDelegate.h"
 #import "CHRootViewController.h"
+#import "CHComposeViewController.h"
 #import "CHLinkRouter.h"
 #import "CHTLSSocket.h"
 #import "CHImageLoader.h"
@@ -105,6 +106,13 @@ static BOOL CHPressView(UIView *v, NSString *text)
         return YES;
     }
     if ([target isEqualToString:@"search"]) { [CHLinkRouter openSearch:params[@"q"]]; return YES; }
+    if ([target isEqualToString:@"compose"]) {
+        CHComposeViewController *c = [CHComposeViewController composeNew];
+        UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:c];
+        if (CHIsPad()) nav.modalPresentationStyle = UIModalPresentationFormSheet;
+        [[self topController] presentViewController:nav animated:YES completion:nil];
+        return YES;
+    }
     if ([target isEqualToString:@"open"] && [params[@"url"] length]) {
         if (![CHLinkRouter openLink:params[@"url"]]) [CHUtils alertWithTitle:L(@"Open a link") message:L(@"That does not look like a Twitter link.")];
         return YES;

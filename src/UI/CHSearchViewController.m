@@ -1,5 +1,5 @@
 #import "CHSearchViewController.h"
-#import "CHImageLoader.h"
+#import "CHUserCell.h"
 #import "CHLinkRouter.h"
 #import "CHTwitter.h"
 #import "CHSettings.h"
@@ -8,58 +8,6 @@
 #import "CHCommon.h"
 
 typedef enum { CHSearchModeTrends, CHSearchModeTweets, CHSearchModePeople } CHSearchMode;
-
-#pragma mark - A person row (People results, search history is plain)
-
-@interface CHUserRow : UITableViewCell
-@property (nonatomic, strong) CHImageView *avatar;
-@property (nonatomic, strong) UILabel *nameLabel;
-@property (nonatomic, strong) UILabel *handleLabel;
-@property (nonatomic, strong) UILabel *bioLabel;
-- (void)setUser:(CHUser *)user;
-@end
-
-@implementation CHUserRow
-- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)rid
-{
-    if ((self = [super initWithStyle:style reuseIdentifier:rid])) {
-        CHTheme *th = [CHTheme shared];
-        self.backgroundColor = [th cardColor];
-        _avatar = [[CHImageView alloc] init];
-        _avatar.contentMode = UIViewContentModeScaleAspectFill;
-        _avatar.clipsToBounds = YES;
-        _avatar.backgroundColor = [th separatorColor];
-        _nameLabel = [self lbl:[UIFont boldSystemFontOfSize:CHIsPad() ? 16 : 15] color:[th primaryTextColor]];
-        _handleLabel = [self lbl:[th smallFont] color:[th secondaryTextColor]];
-        _bioLabel = [self lbl:[th smallFont] color:[th secondaryTextColor]];
-        _bioLabel.numberOfLines = 2;
-        for (UIView *v in @[ _avatar, _nameLabel, _handleLabel, _bioLabel ]) [self.contentView addSubview:v];
-    }
-    return self;
-}
-- (UILabel *)lbl:(UIFont *)f color:(UIColor *)c { UILabel *l = [[UILabel alloc] init]; l.font = f; l.textColor = c; l.backgroundColor = [UIColor clearColor]; return l; }
-- (void)setUser:(CHUser *)user
-{
-    CHTheme *th = [CHTheme shared];
-    _avatar.maxPixels = 96;
-    [_avatar setImageURL:user.avatarURL placeholder:[th avatarPlaceholderWithSize:44]];
-    _nameLabel.text = [CHUtils displayText:user.name.length ? user.name : user.handle];
-    _handleLabel.text = [@"@" stringByAppendingString:user.handle ?: @""];
-    _bioLabel.text = [CHUtils displayText:user.bio ?: @""];
-    [self setNeedsLayout];
-}
-- (void)layoutSubviews
-{
-    [super layoutSubviews];
-    CGFloat pad = 12, av = 44;
-    _avatar.frame = CGRectMake(pad, 10, av, av);
-    _avatar.layer.cornerRadius = av / 2;
-    CGFloat x = pad + av + 10, w = self.contentView.bounds.size.width - x - pad;
-    _nameLabel.frame = CGRectMake(x, 9, w, 18);
-    _handleLabel.frame = CGRectMake(x, 27, w, 16);
-    _bioLabel.frame = CGRectMake(x, 44, w, 30);
-}
-@end
 
 #pragma mark - Search
 
@@ -232,8 +180,8 @@ typedef enum { CHSearchModeTrends, CHSearchModeTweets, CHSearchModePeople } CHSe
     CHTheme *th = [CHTheme shared];
     if (self.mode == CHSearchModeTweets) return [super tableView:tableView cellForRowAtIndexPath:indexPath];
     if (self.mode == CHSearchModePeople) {
-        CHUserRow *cell = [tableView dequeueReusableCellWithIdentifier:@"user"];
-        if (!cell) cell = [[CHUserRow alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"user"];
+        CHUserCell *cell = [tableView dequeueReusableCellWithIdentifier:@"user"];
+        if (!cell) cell = [[CHUserCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"user"];
         [cell setUser:self.users[(NSUInteger)indexPath.row]];
         return cell;
     }
@@ -259,7 +207,7 @@ typedef enum { CHSearchModeTrends, CHSearchModeTweets, CHSearchModePeople } CHSe
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
 {
     if (self.mode == CHSearchModeTweets) return [super tableView:tableView heightForRowAtIndexPath:indexPath];
-    if (self.mode == CHSearchModePeople) return 84;
+    if (self.mode == CHSearchModePeople) return [CHUserCell height];
     return indexPath.section == 0 ? 44 : 58;
 }
 

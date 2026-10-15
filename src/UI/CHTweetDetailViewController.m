@@ -1,6 +1,8 @@
 #import "CHTweetDetailViewController.h"
 #import "CHTweetCell.h"
 #import "CHMediaViewController.h"
+#import "CHTweetActions.h"
+#import "CHComposeViewController.h"
 #import "CHExternalOpen.h"
 #import "CHLinkRouter.h"
 #import "CHTwitter.h"
@@ -154,7 +156,6 @@
     CHTweet *tweet = [self tweetAt:indexPath];
     cell.delegate = self;
     [cell setTweet:tweet];
-    [cell setSaved:[CHSettings isSaved:tweet.tweetId]];
     return cell;
 }
 
@@ -187,13 +188,9 @@
     [self presentViewController:viewer animated:YES completion:nil];
 }
 
-- (void)tweetCellDidToggleSave:(CHTweetCell *)cell
+- (void)tweetCell:(CHTweetCell *)cell didTapAction:(NSString *)action
 {
-    CHTweet *tweet = cell.tweet;
-    if (!tweet.tweetId.length) return;
-    BOOL saved = [CHSettings isSaved:tweet.tweetId];
-    if (saved) [CHSettings unsaveTweet:tweet.tweetId]; else [CHSettings saveTweetJSON:[tweet toJSON]];
-    [cell setSaved:!saved];
+    [CHTweetActions handleAction:action tweet:cell.tweet cell:cell from:self];
 }
 
 @end

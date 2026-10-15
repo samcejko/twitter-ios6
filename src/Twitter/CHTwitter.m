@@ -4,9 +4,12 @@
 #import "CHUtils.h"
 #import "CHCommon.h"
 
+static NSString *g_account;
+
 @implementation CHTwitter
 
 + (BOOL)configured { return [CHSettings serverConfigured]; }
++ (NSString *)accountHandle { return g_account.length ? g_account : nil; }
 
 // base URL + path + query (the server key goes on every call as ?k=)
 + (NSString *)urlForPath:(NSString *)path params:(NSDictionary *)params
@@ -50,6 +53,7 @@
     [self get:@"/health" params:nil completion:^(NSDictionary *json, NSError *error) {
         BOOL ok = !error && CHBool(json[@"ok"]);
         NSString *info = CHStr(json[@"account"]);   // the signed-in @handle, when the helper reports it
+        if (info.length) g_account = info;
         if (completion) completion(ok, info, error);
     }];
 }
@@ -133,6 +137,109 @@
         NSMutableArray *trends = [NSMutableArray array];
         for (id t in CHArr(json[@"items"])) { CHTrend *tr = [CHTrend trendFromJSON:t]; if (tr) [trends addObject:tr]; }
         if (completion) completion(trends, error);
+    }];
+}
+
++ (CHHTTPTask *)bookmarks:(NSString *)cursor completion:(void (^)(CHTweetPage *, NSError *))completion
+{
+    return [self get:@"/bookmarks" params:@{ @"cursor": cursor ?: @"" } completion:^(NSDictionary *json, NSError *error) {
+        if (completion) completion(error ? nil : [CHTweetPage pageFromJSON:json], error);
+    }];
+}
+
++ (CHHTTPTask *)notifications:(NSString *)kind cursor:(NSString *)cursor
+                   completion:(void (^)(NSArray *, NSString *, BOOL, NSError *))completion
+{
+    NSDictionary *params = @{ @"kind": kind ?: @"all", @"cursor": cursor ?: @"" };
+    return [self get:@"/notifications" params:params completion:^(NSDictionary *json, NSError *error) {
+        NSMutableArray *items = [NSMutableArray array];
+        for (id n in CHArr(json[@"items"])) { CHNotification *nn = [CHNotification notificationFromJSON:n]; if (nn) [items addObject:nn]; }
+        NSString *c = CHStr(json[@"bottom"]);
+        if (completion) completion(items, c, CHBool(json[@"hasMore"]) && c.length > 0, error);
+    }];
+}
+
++ (CHHTTPTask *)followersOf:(NSString *)handle userId:(NSString *)userId following:(BOOL)following cursor:(NSString *)cursor
+                 completion:(void (^)(CHTweetPage *, NSError *))completion
+{
+    NSString *name = [handle hasPrefix:@"@"] ? [handle substringFromIndex:1] : handle;
+    NSDictionary *params = @{ @"name": name ?: @"", @"id": userId ?: @"", @"cursor": cursor ?: @"" };
+    return [self get:(following ? @"/following" : @"/followers") params:params completion:^(NSDictionary *json, NSError *error) {
+        if (completion) completion(error ? nil : [CHTweetPage pageFromJSON:json], error);
+    }];
+}
+
+#pragma mark - Actions
+
++ (CHHTTPTask *)performAction:(NSString *)action onId:(NSString *)objId completion:(void (^)(BOOL, NSError *))completion
+{
+    return [self get:@"/action" params:@{ @"do": action ?: @"", @"id": objId ?: @"" } completion:^(NSDictionary *json, NSError *error) {
+        if (completion) completion(!error && CHBool(json[@"ok"]), error);
+    }];
+}
+
++ (void)postJSON:(NSString *)path object:(NSDictionary *)object completion:(void (^)(NSDictionary *json, NSError *error))completion
+{
+    NSString *url = [self urlForPath:path params:nil];
+    if (!url) { CHMain(^{ if (completion) completion(nil, CHMakeError(CHErrorAPI, L(@"Set the server address in Settings first."))); }); return; }
+    [CHHTTP postJSON:url headers:nil object:object retries:0 completion:^(id json, NSInteger status, NSError *error) {
+        NSDictionary *d = [json isKindOfClass:[NSDictionary class]] ? json : nil;
+        NSError *err = error;
+        if (!err && d[@"error"]) err = CHMakeError(status ?: CHErrorAPI, CHStr(d[@"error"]));
+        if (completion) completion(d, err);
+    }];
+}
+
++ (void)postText:(NSString *)text replyTo:(NSString *)replyToId quoteURL:(NSString *)quoteURL
+       imageData:(NSData *)imageData imageType:(NSString *)imageType completion:(void (^)(NSString *, NSError *))completion
+{
+    NSMutableDictionary *body = [NSMutableDictionary dictionary];
+    body[@"text"] = text ?: @"";
+    if (replyToId.length) body[@"replyTo"] = replyToId;
+    if (quoteURL.length) body[@"quoteUrl"] = quoteURL;
+    if (imageData.length) {
+        body[@"imageB64"] = [CHUtils base64Encode:imageData];
+        body[@"imageType"] = imageType ?: @"jpg";
+    }
+    [self postJSON:@"/post" object:body completion:^(NSDictionary *json, NSError *error) {
+        if (completion) completion(CHStr(json[@"id"]), error);
+    }];
+}
+
+#pragma mark - Direct messages
+
++ (CHHTTPTask *)dmConversations:(void (^)(NSArray *, BOOL, NSError *))completion
+{
+    return [self get:@"/dm/list" params:nil completion:^(NSDictionary *json, NSError *error) {
+        NSMutableArray *items = [NSMutableArray array];
+        for (id c in CHArr(json[@"items"])) {
+            NSDictionary *cd = CHDict(c);
+            CHUser *u = [CHUser userFromJSON:cd[@"user"]];
+            if (u) [items addObject:@{ @"user": u, @"last": CHStr(cd[@"last"]) ?: @"", @"time": @(CHDbl(cd[@"time"])) }];
+        }
+        if (completion) completion(items, CHBool(json[@"supported"]), error);
+    }];
+}
+
++ (CHHTTPTask *)dmHistoryWith:(NSString *)handle userId:(NSString *)userId cursor:(NSString *)cursor
+                   completion:(void (^)(NSArray *, NSString *, NSString *, BOOL, NSError *))completion
+{
+    NSString *name = [handle hasPrefix:@"@"] ? [handle substringFromIndex:1] : handle;
+    NSDictionary *params = @{ @"name": name ?: @"", @"id": userId ?: @"", @"cursor": cursor ?: @"" };
+    return [self get:@"/dm/history" params:params completion:^(NSDictionary *json, NSError *error) {
+        NSMutableArray *msgs = [NSMutableArray array];
+        for (id m in CHArr(json[@"items"])) { CHMessage *mm = [CHMessage messageFromJSON:m]; if (mm) [msgs addObject:mm]; }
+        if (completion) completion(msgs, CHStr(json[@"uid"]), CHStr(json[@"cursor"]), CHBool(json[@"hasMore"]), error);
+    }];
+}
+
++ (void)sendDM:(NSString *)text to:(NSString *)handle userId:(NSString *)userId
+    completion:(void (^)(CHMessage *, NSString *, NSError *))completion
+{
+    NSString *name = [handle hasPrefix:@"@"] ? [handle substringFromIndex:1] : handle;
+    NSDictionary *body = @{ @"text": text ?: @"", @"name": name ?: @"", @"id": userId ?: @"" };
+    [self postJSON:@"/dm/send" object:body completion:^(NSDictionary *json, NSError *error) {
+        if (completion) completion([CHMessage messageFromJSON:json[@"message"]], CHStr(json[@"uid"]), error);
     }];
 }
 

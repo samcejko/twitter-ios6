@@ -39,6 +39,8 @@
 @property (nonatomic, copy) NSString *website;       // the link in their bio, expanded
 @property (nonatomic) NSTimeInterval joined;         // when the account was created (Unix), 0 = unknown
 @property (nonatomic, copy) NSString *pinnedTweetId;
+@property (nonatomic) BOOL isFollowing;              // the signed-in account follows them
+@property (nonatomic) BOOL followsYou;               // they follow the signed-in account
 + (instancetype)userFromJSON:(NSDictionary *)json;
 - (NSDictionary *)toJSON;
 - (NSString *)shareURL;                               // https://twitter.com/<handle>
@@ -59,6 +61,9 @@
 @property (nonatomic) long long viewCount;           // impressions, 0 = not given
 @property (nonatomic) BOOL sensitive;
 @property (nonatomic) BOOL pinned;                   // shown pinned on a profile
+@property (nonatomic) BOOL favorited;                // the signed-in account liked it
+@property (nonatomic) BOOL retweeted;                // ...reposted it
+@property (nonatomic) BOOL bookmarked;               // ...bookmarked it
 @property (nonatomic, copy) NSString *conversationId;
 @property (nonatomic, copy) NSString *replyToId;     // the tweet this one replies to, if any
 @property (nonatomic, copy) NSString *replyToHandle;
@@ -99,6 +104,27 @@
 @property (nonatomic, copy) NSString *cursor;         // more replies
 @property (nonatomic) BOOL hasMore;
 + (instancetype)threadFromJSON:(NSDictionary *)json;
+@end
+
+// One notification (a like, a repost, a follow, a mention, a reply…)
+@interface CHNotification : NSObject
+@property (nonatomic, copy) NSString *notificationId;
+@property (nonatomic, copy) NSString *iconType;       // "heart_icon", "retweet_icon", "person_icon", "bird_icon"…
+@property (nonatomic, copy) NSString *text;           // "X and 3 others liked your tweet"
+@property (nonatomic) NSTimeInterval createdAt;
+@property (nonatomic, copy) NSArray *users;           // CHUser (who triggered it)
+@property (nonatomic, strong) CHTweet *tweet;         // the tweet it is about, or nil (e.g. a follow)
++ (instancetype)notificationFromJSON:(NSDictionary *)json;
+@end
+
+// One direct message in a conversation
+@interface CHMessage : NSObject
+@property (nonatomic, copy) NSString *messageId;
+@property (nonatomic, copy) NSString *text;
+@property (nonatomic) NSTimeInterval createdAt;
+@property (nonatomic, copy) NSString *senderId;
+@property (nonatomic) BOOL fromMe;
++ (instancetype)messageFromJSON:(NSDictionary *)json;
 @end
 
 // A trend in Explore

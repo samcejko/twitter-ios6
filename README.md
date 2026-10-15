@@ -1,15 +1,14 @@
 # Chirpie - Twitter on iOS 6
 
-An unofficial **reader** for X / Twitter on jailbroken iOS 6.x (iPad 2 / iPhone 4S era) and, as a second build of
-the same sources, for 64-bit devices with iOS 14–17 (iPhone X and newer: rootless jailbreaks and TrollStore), in
-English and Czech. The classic blue-bird look, native to the iOS 6 Twitter era: your home timeline (For You and
-Following), tweet threads, profiles with their tweets, replies, media and likes, search (Top, Latest, People),
-trends, photos and videos, and bookmarks kept on the device.
+An unofficial client for X / Twitter on jailbroken iOS 6.x (iPad 2 / iPhone 4S era) and, as a second build of the
+same sources, for 64-bit devices with iOS 14–17 (iPhone X and newer: rootless jailbreaks and TrollStore), in English
+and Czech. The classic blue-bird look, native to the iOS 6 Twitter era. Five tabs — Home, Explore, Notifications,
+Messages, Me — with your home timeline (For You and Following), tweet threads, profiles, search (Top, Latest,
+People), trends, photos and videos; and the full set of actions: reply, repost, like, bookmark, quote, follow,
+compose (with a photo) and direct messages.
 
-Read-only: Chirpie shows what your own account can see. It does not post, like, retweet, follow or send messages.
-
-Chirpie is not affiliated with, endorsed by or associated with X Corp or Twitter. It only reads content your
-account has access to.
+Everything runs through **your own X account** on your own server. Chirpie is not affiliated with, endorsed by or
+associated with X Corp or Twitter.
 
 ## How it works (and why it needs your own server)
 
@@ -32,10 +31,13 @@ the server address (e.g. `https://chirpie.samcejko.eu`) and, if you set one, the
 
 ## Using it
 
-- **Home** - the timeline, with a For You / Following switch in the bar. Pull to refresh; it loads more as you scroll.
-- **Explore** - search (Top, Latest, People) and the current trends; your recent searches are kept on the device.
-- **Bookmarks** - tweets you kept with the bookmark button. They live on the device only.
-- Tap a tweet for its thread, an avatar or name for the profile, a photo or video to open it full screen.
+- **Home** - the timeline, with a For You / Following switch; the compose button is top-right. Pull to refresh.
+- **Explore** - search (Top, Latest, People) and the current trends; your recent searches stay on the device.
+- **Notifications** - likes, reposts, follows, mentions and replies (All / Mentions).
+- **Messages** - your conversations; start one from a profile or the compose button.
+- **Me** - your own profile, with Settings and your Bookmarks in the bar.
+- Each tweet has reply, repost, like, bookmark and a … menu (quote, copy link, share, open in browser, delete your
+  own). Tap a tweet for its thread, an avatar or name for the profile, a photo or video to open it full screen.
 - Links, `@mentions` and `#hashtags`: a twitter.com / x.com link opens inside Chirpie, a YouTube / Twitch / Kick /
   TikTok link in Tubie / Twitcher / Kicker / TikTak when that app is installed, anything else in Safari or Surfari.
 - Link scheme: `chirpie:open?url=<a tweet or profile link>`, `chirpie:tweet/<id>`, `chirpie:user/<handle>`,
@@ -70,8 +72,9 @@ vendor        mbedTLS configuration and glue (the library is fetched by CI)
 
 ## Privacy
 
-Your bookmarks and recent searches live on the device (Settings can clear them). The app talks only to your own
-helper and to Twitter's public media CDN. No account lives in the app, no telemetry.
+Your recent searches live on the device; bookmarks are your account's own X bookmarks. The app talks only to your
+own helper and to Twitter's media CDN. No account credentials live in the app, no telemetry - the sign-in stays on
+your server.
 
 ## License
 

@@ -62,6 +62,8 @@ static long long CHLL(id value) { return (long long)CHDbl(value); }
     u.website = CHStr(d[@"url"]);
     u.joined = CHDbl(d[@"created"]);
     u.pinnedTweetId = CHStr(d[@"pinnedId"]);
+    u.isFollowing = CHBool(d[@"isFollowing"]);
+    u.followsYou = CHBool(d[@"followsYou"]);
     return u.handle.length || u.name.length ? u : nil;
 }
 
@@ -113,6 +115,9 @@ static long long CHLL(id value) { return (long long)CHDbl(value); }
     t.viewCount = CHLL(d[@"views"]);
     t.sensitive = CHBool(d[@"sensitive"]);
     t.pinned = CHBool(d[@"pinned"]);
+    t.favorited = CHBool(d[@"favorited"]);
+    t.retweeted = CHBool(d[@"retweeted"]);
+    t.bookmarked = CHBool(d[@"bookmarked"]);
     t.conversationId = CHStr(d[@"conversationId"]);
     t.replyToId = CHStr(d[@"replyToId"]);
     t.replyToHandle = CHStr(d[@"replyToHandle"]);
@@ -209,6 +214,41 @@ static long long CHLL(id value) { return (long long)CHDbl(value); }
     t.cursor = CHStr(d[@"cursor"]);
     t.hasMore = CHBool(d[@"hasMore"]) && t.cursor.length > 0;
     return t;
+}
+
+@end
+
+@implementation CHNotification
+
++ (instancetype)notificationFromJSON:(NSDictionary *)json
+{
+    NSDictionary *d = CHDict(json);
+    CHNotification *n = [[CHNotification alloc] init];
+    n.notificationId = CHStr(d[@"id"]);
+    n.iconType = CHStr(d[@"icon"]);
+    n.text = CHStr(d[@"text"]);
+    n.createdAt = CHDbl(d[@"time"]);
+    NSMutableArray *users = [NSMutableArray array];
+    for (id u in CHArr(d[@"users"])) { CHUser *uu = [CHUser userFromJSON:u]; if (uu) [users addObject:uu]; }
+    n.users = users;
+    if (CHDict(d[@"tweet"]).count) n.tweet = [CHTweet tweetFromJSON:d[@"tweet"]];
+    return (n.text.length || n.tweet || n.users.count) ? n : nil;
+}
+
+@end
+
+@implementation CHMessage
+
++ (instancetype)messageFromJSON:(NSDictionary *)json
+{
+    NSDictionary *d = CHDict(json);
+    CHMessage *m = [[CHMessage alloc] init];
+    m.messageId = CHStr(d[@"id"]);
+    m.text = CHStr(d[@"text"]);
+    m.createdAt = CHDbl(d[@"time"]);
+    m.senderId = CHStr(d[@"senderId"]);
+    m.fromMe = CHBool(d[@"fromMe"]);
+    return m.messageId.length ? m : nil;
 }
 
 @end

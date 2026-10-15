@@ -1,4 +1,6 @@
 #import "CHProfileViewController.h"
+#import "CHUserListViewController.h"
+#import "CHConversationViewController.h"
 #import "CHImageLoader.h"
 #import "CHExternalOpen.h"
 #import "CHLinkRouter.h"
@@ -23,9 +25,13 @@
 @property (nonatomic, strong) UILabel *protectedLabel;
 @property (nonatomic, strong) UILabel *bioLabel;
 @property (nonatomic, strong) UILabel *metaLabel;
-@property (nonatomic, strong) UILabel *countsLabel;
+@property (nonatomic, strong) UIButton *followingButton;
+@property (nonatomic, strong) UIButton *followersButton;
+@property (nonatomic, strong) UIButton *followButton;
+@property (nonatomic, strong) UIButton *messageButton;
 @property (nonatomic, strong) UISegmentedControl *segments;
 @property (nonatomic) CGFloat headerWidth;
+@property (nonatomic) BOOL isMe;
 @end
 
 @implementation CHProfileViewController
@@ -85,14 +91,32 @@
     self.bioLabel.numberOfLines = 0;
     self.metaLabel = [self label:[th smallFont] color:[th secondaryTextColor]];
     self.metaLabel.numberOfLines = 0;
-    self.countsLabel = [self label:[th smallFont] color:[th secondaryTextColor]];
+    self.followingButton = [self countButton];
+    self.followersButton = [self countButton];
+    [self.followingButton addTarget:self action:@selector(openFollowing) forControlEvents:UIControlEventTouchUpInside];
+    [self.followersButton addTarget:self action:@selector(openFollowers) forControlEvents:UIControlEventTouchUpInside];
+
+    self.followButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    self.followButton.titleLabel.font = [UIFont boldSystemFontOfSize:14];
+    self.followButton.layer.cornerRadius = 15;
+    self.followButton.contentEdgeInsets = UIEdgeInsetsMake(0, 14, 0, 14);
+    [self.followButton addTarget:self action:@selector(toggleFollow) forControlEvents:UIControlEventTouchUpInside];
+    self.messageButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    self.messageButton.titleLabel.font = [UIFont boldSystemFontOfSize:14];
+    self.messageButton.layer.cornerRadius = 15;
+    self.messageButton.layer.borderWidth = 1;
+    self.messageButton.contentEdgeInsets = UIEdgeInsetsMake(0, 12, 0, 12);
+    [self.messageButton setTitle:L(@"Message") forState:UIControlStateNormal];
+    [self.messageButton addTarget:self action:@selector(message) forControlEvents:UIControlEventTouchUpInside];
+    self.followButton.hidden = self.messageButton.hidden = YES;
 
     self.segments = [[UISegmentedControl alloc] initWithItems:@[ L(@"Tweets"), L(@"Replies"), L(@"Media"), L(@"Likes") ]];
     self.segments.selectedSegmentIndex = 0;
     [self.segments addTarget:self action:@selector(switchKind:) forControlEvents:UIControlEventValueChanged];
 
     for (UIView *v in @[ self.banner, self.avatarRing, self.avatar, self.nameLabel, self.verified, self.handleLabel,
-                         self.protectedLabel, self.bioLabel, self.metaLabel, self.countsLabel, self.segments ])
+                         self.protectedLabel, self.bioLabel, self.metaLabel, self.followingButton, self.followersButton,
+                         self.messageButton, self.followButton, self.segments ])
         [self.header addSubview:v];
 }
 
@@ -101,6 +125,57 @@
     UILabel *l = [[UILabel alloc] init];
     l.font = font; l.textColor = color; l.backgroundColor = [UIColor clearColor];
     return l;
+}
+
+- (UIButton *)countButton
+{
+    UIButton *b = [UIButton buttonWithType:UIButtonTypeCustom];
+    b.titleLabel.font = [[CHTheme shared] smallFont];
+    return b;
+}
+
+- (NSAttributedString *)countTitle:(long long)n word:(NSString *)word
+{
+    CHTheme *th = [CHTheme shared];
+    NSMutableAttributedString *s = [[NSMutableAttributedString alloc] initWithString:[CHUtils formatBigCount:n]
+        attributes:@{ NSFontAttributeName: [UIFont boldSystemFontOfSize:[th smallFont].pointSize + 1], NSForegroundColorAttributeName: [th primaryTextColor] }];
+    [s appendAttributedString:[[NSAttributedString alloc] initWithString:[@" " stringByAppendingString:word]
+        attributes:@{ NSFontAttributeName: [th smallFont], NSForegroundColorAttributeName: [th secondaryTextColor] }]];
+    return s;
+}
+
+#pragma mark - Follow / message / counts
+
+- (void)openFollowing { [CHLinkRouter push:[[CHUserListViewController alloc] initWithHandle:self.handle userId:self.user.userId following:YES]]; }
+- (void)openFollowers { [CHLinkRouter push:[[CHUserListViewController alloc] initWithHandle:self.handle userId:self.user.userId following:NO]]; }
+
+- (void)toggleFollow
+{
+    if (!self.user.userId.length) return;
+    BOOL was = self.user.isFollowing;
+    self.user.isFollowing = !was;
+    [self styleFollowButton];
+    [CHTwitter performAction:(was ? @"unfollow" : @"follow") onId:self.user.userId completion:^(BOOL ok, NSError *error) {
+        if (!ok) { self.user.isFollowing = was; [self styleFollowButton]; [CHUtils alertWithTitle:L(@"Follow") message:error.localizedDescription ?: L(@"That did not work.")]; }
+    }];
+}
+
+- (void)message
+{
+    [CHLinkRouter push:[[CHConversationViewController alloc] initWithHandle:self.handle userId:self.user.userId name:self.user.name]];
+}
+
+- (void)styleFollowButton
+{
+    CHTheme *th = [CHTheme shared];
+    BOOL following = self.user.isFollowing;
+    [self.followButton setTitle:(following ? L(@"Following") : L(@"Follow")) forState:UIControlStateNormal];
+    self.followButton.backgroundColor = following ? [UIColor clearColor] : [th accentColor];
+    self.followButton.layer.borderWidth = following ? 1 : 0;
+    self.followButton.layer.borderColor = [th separatorColor].CGColor;
+    [self.followButton setTitleColor:(following ? [th primaryTextColor] : [UIColor whiteColor]) forState:UIControlStateNormal];
+    self.messageButton.layer.borderColor = [th separatorColor].CGColor;
+    [self.messageButton setTitleColor:[th primaryTextColor] forState:UIControlStateNormal];
 }
 
 - (void)fillHeaderFromUser
@@ -126,18 +201,12 @@
     }
     self.metaLabel.text = [meta componentsJoinedByString:@"   ·   "];
 
-    CHTheme *th = [CHTheme shared];
-    NSMutableAttributedString *counts = [[NSMutableAttributedString alloc] init];
-    void (^add)(long long, NSString *) = ^(long long n, NSString *word) {
-        if (counts.length) [counts appendAttributedString:[[NSAttributedString alloc] initWithString:@"    "]];
-        [counts appendAttributedString:[[NSAttributedString alloc] initWithString:[CHUtils formatBigCount:n]
-            attributes:@{ NSFontAttributeName: [UIFont boldSystemFontOfSize:[th smallFont].pointSize + 1], NSForegroundColorAttributeName: [th primaryTextColor] }]];
-        [counts appendAttributedString:[[NSAttributedString alloc] initWithString:[@" " stringByAppendingString:word]
-            attributes:@{ NSFontAttributeName: [th smallFont], NSForegroundColorAttributeName: [th secondaryTextColor] }]];
-    };
-    add(u.following, L(@"Following"));
-    add(u.followers, L(@"Followers"));
-    self.countsLabel.attributedText = counts;
+    [self.followingButton setAttributedTitle:[self countTitle:u.following word:L(@"Following")] forState:UIControlStateNormal];
+    [self.followersButton setAttributedTitle:[self countTitle:u.followers word:L(@"Followers")] forState:UIControlStateNormal];
+    NSString *me = [CHTwitter accountHandle];
+    self.isMe = me.length && [self.handle caseInsensitiveCompare:me] == NSOrderedSame;
+    self.followButton.hidden = self.messageButton.hidden = self.isMe;
+    if (!self.isMe) [self styleFollowButton];
 
     self.headerWidth = 0;   // force relayout
     [self layoutHeaderForWidth:self.tableView.bounds.size.width];
@@ -154,6 +223,16 @@
     self.avatarRing.layer.cornerRadius = (avatar + 2 * ring) / 2;
     self.avatar.frame = CGRectMake(pad, bannerH - avatar / 2, avatar, avatar);
     self.avatar.layer.cornerRadius = avatar / 2;
+
+    if (!self.isMe) {
+        CGFloat btnY = bannerH + 8;
+        [self.followButton sizeToFit];
+        CGFloat fw = MAX(80, self.followButton.frame.size.width);
+        self.followButton.frame = CGRectMake(width - pad - fw, btnY, fw, 30);
+        [self.messageButton sizeToFit];
+        CGFloat mw = MAX(82, self.messageButton.frame.size.width);
+        self.messageButton.frame = CGRectMake(width - pad - fw - 8 - mw, btnY, mw, 30);
+    }
 
     CGFloat y = bannerH + avatar / 2 + 8;
     CGFloat w = width - 2 * pad;
@@ -184,9 +263,12 @@
     } else {
         self.metaLabel.frame = CGRectZero;
     }
-    CGFloat countsH = ceilf((float)self.countsLabel.font.lineHeight) + 2;
-    self.countsLabel.frame = CGRectMake(pad, y, w, countsH);
-    y += countsH + 10;
+    [self.followingButton sizeToFit];
+    CGFloat fiW = self.followingButton.frame.size.width;
+    self.followingButton.frame = CGRectMake(pad, y, fiW, 24);
+    [self.followersButton sizeToFit];
+    self.followersButton.frame = CGRectMake(pad + fiW + 18, y, self.followersButton.frame.size.width, 24);
+    y += 24 + 10;
 
     self.segments.frame = CGRectMake(pad, y, w, 30);
     y += 30 + 8;

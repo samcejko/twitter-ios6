@@ -1,4 +1,5 @@
 #import "CHTimelineViewController.h"
+#import "CHComposeViewController.h"
 #import "CHTwitter.h"
 #import "CHSettings.h"
 #import "CHTheme.h"
@@ -35,6 +36,7 @@
         self.feedSwitch.selectedSegmentIndex = [CHSettings followingTimeline] ? 1 : 0;
         [self.feedSwitch addTarget:self action:@selector(switchFeed:) forControlEvents:UIControlEventValueChanged];
         self.navigationItem.titleView = self.feedSwitch;
+        self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCompose target:self action:@selector(compose)];
     }
     if (self.mode == CHTimelineSaved)
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(reload) name:CHLibraryDidChangeNotification object:nil];
@@ -52,21 +54,21 @@
     [self reload];
 }
 
+- (void)compose
+{
+    CHComposeViewController *c = [CHComposeViewController composeNew];
+    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:c];
+    if (CHIsPad()) nav.modalPresentationStyle = UIModalPresentationFormSheet;
+    [self presentViewController:nav animated:YES completion:nil];
+}
+
 - (void)fetchWithCursor:(NSString *)cursor completion:(void (^)(CHTweetPage *, NSError *))completion
 {
-    if (self.mode == CHTimelineSaved) {
-        NSMutableArray *tweets = [NSMutableArray array];
-        for (NSDictionary *json in [CHSettings savedTweets]) { CHTweet *t = [CHTweet tweetFromJSON:json]; if (t) [tweets addObject:t]; }
-        CHTweetPage *page = [[CHTweetPage alloc] init];
-        page.tweets = tweets;
-        page.hasMore = NO;
-        completion(page, nil);
-        return;
-    }
     if (![CHTwitter configured]) {
         completion(nil, CHMakeError(CHErrorAPI, L(@"Set your server address to start.\nSettings are behind the button at the top left.")));
         return;
     }
+    if (self.mode == CHTimelineSaved) { [CHTwitter bookmarks:cursor completion:completion]; return; }
     [CHTwitter homeTimelineFollowing:[CHSettings followingTimeline] cursor:cursor completion:completion];
 }
 

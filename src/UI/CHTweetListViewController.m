@@ -2,6 +2,7 @@
 #import "CHTweetDetailViewController.h"
 #import "CHMediaViewController.h"
 #import "CHSettingsViewController.h"
+#import "CHTweetActions.h"
 #import "CHLinkRouter.h"
 #import "CHSettings.h"
 #import "CHTheme.h"
@@ -195,7 +196,6 @@ static NSString * const CHCellId = @"tweet";
     CHTweet *tweet = self.tweets[(NSUInteger)indexPath.row];
     cell.delegate = self;
     [cell setTweet:tweet];
-    [cell setSaved:[CHSettings isSaved:tweet.tweetId]];
     return cell;
 }
 
@@ -236,14 +236,9 @@ static NSString * const CHCellId = @"tweet";
     [self presentViewController:viewer animated:YES completion:nil];
 }
 
-- (void)tweetCellDidToggleSave:(CHTweetCell *)cell
+- (void)tweetCell:(CHTweetCell *)cell didTapAction:(NSString *)action
 {
-    CHTweet *tweet = cell.tweet;
-    if (!tweet.tweetId.length) return;
-    BOOL saved = [CHSettings isSaved:tweet.tweetId];
-    if (saved) [CHSettings unsaveTweet:tweet.tweetId];
-    else [CHSettings saveTweetJSON:[tweet toJSON]];
-    [cell setSaved:!saved];
+    [CHTweetActions handleAction:action tweet:cell.tweet cell:cell from:self];
 }
 
 - (void)dealloc { [[NSNotificationCenter defaultCenter] removeObserver:self]; }

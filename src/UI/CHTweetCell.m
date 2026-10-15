@@ -241,6 +241,26 @@ static UIImage *CHActionIcon(NSString *name, UIColor *color)
         CGFloat xs[] = { 3, 7, 11, 15 }, hs[] = { 4, 8, 6, 12 };
         for (int i = 0; i < 4; i++) { [bars moveToPoint:CGPointMake(xs[i], 15)]; [bars addLineToPoint:CGPointMake(xs[i], 15 - hs[i])]; }
         [bars stroke];
+    } else if ([name isEqualToString:@"like-filled"]) {
+        UIBezierPath *heart = [UIBezierPath bezierPath];
+        [heart moveToPoint:CGPointMake(9, 15.5)];
+        [heart addCurveToPoint:CGPointMake(2.5, 7) controlPoint1:CGPointMake(4.5, 12) controlPoint2:CGPointMake(2.5, 9.6)];
+        [heart addArcWithCenter:CGPointMake(5.2, 6.4) radius:2.7 startAngle:M_PI endAngle:0 clockwise:YES];
+        [heart addArcWithCenter:CGPointMake(10.6, 6.4) radius:2.7 startAngle:M_PI endAngle:0 clockwise:YES];
+        [heart addCurveToPoint:CGPointMake(9, 15.5) controlPoint1:CGPointMake(15.5, 9.6) controlPoint2:CGPointMake(13.5, 12)];
+        [heart closePath];
+        [heart fill];
+    } else if ([name isEqualToString:@"bookmark"] || [name isEqualToString:@"bookmark-filled"]) {
+        UIBezierPath *p = [UIBezierPath bezierPath];
+        [p moveToPoint:CGPointMake(4, 2.5)];
+        [p addLineToPoint:CGPointMake(14, 2.5)];
+        [p addLineToPoint:CGPointMake(14, 16)];
+        [p addLineToPoint:CGPointMake(9, 11.5)];
+        [p addLineToPoint:CGPointMake(4, 16)];
+        [p closePath];
+        if ([name hasSuffix:@"filled"]) { [p fill]; } else { p.lineWidth = 1.6; p.lineJoinStyle = kCGLineJoinRound; [p stroke]; }
+    } else if ([name isEqualToString:@"more"]) {
+        for (int i = 0; i < 3; i++) [[UIBezierPath bezierPathWithOvalInRect:CGRectMake(2 + i * 6, 8, 2.6, 2.6)] fill];
     }
     img = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
@@ -294,7 +314,9 @@ static UIImage *CHVerifiedBadge(void)
 // action row
 @property (nonatomic, strong) NSArray *countIcons;    // UIImageView reply/retweet/like/views
 @property (nonatomic, strong) NSArray *countLabels;   // UILabel
-@property (nonatomic, strong) UIButton *saveButton;
+@property (nonatomic, strong) NSArray *actionButtons; // invisible tap targets over reply/retweet/like
+@property (nonatomic, strong) UIButton *bookmarkButton;
+@property (nonatomic, strong) UIButton *moreButton;
 @end
 
 @implementation CHTweetCell
@@ -380,18 +402,28 @@ static UIImage *CHVerifiedBadge(void)
         }
         _countIcons = icons;
         _countLabels = labels;
-        _saveButton = [UIButton buttonWithType:UIButtonTypeCustom];
-        [_saveButton addTarget:self action:@selector(tapSave) forControlEvents:UIControlEventTouchUpInside];
+        NSMutableArray *abtns = [NSMutableArray array];
+        for (int i = 0; i < 3; i++) {   // reply / retweet / like are tappable; views is not
+            UIButton *b = [UIButton buttonWithType:UIButtonTypeCustom];
+            b.tag = i;
+            [b addTarget:self action:@selector(tapActionButton:) forControlEvents:UIControlEventTouchUpInside];
+            [abtns addObject:b];
+        }
+        _actionButtons = abtns;
+        _bookmarkButton = [UIButton buttonWithType:UIButtonTypeCustom];
+        [_bookmarkButton addTarget:self action:@selector(tapBookmark) forControlEvents:UIControlEventTouchUpInside];
+        _moreButton = [UIButton buttonWithType:UIButtonTypeCustom];
+        [_moreButton setImage:CHActionIcon(@"more", [th secondaryTextColor]) forState:UIControlStateNormal];
+        [_moreButton addTarget:self action:@selector(tapMore) forControlEvents:UIControlEventTouchUpInside];
 
         for (UIView *v in @[ _retweetIcon, _retweetLabel, _avatarView, _nameLabel, _verifiedView, _timeLabel,
-                             _replyLabel, _textLabel2, _dateLabel, _quoteView, _avatarButton, _headerButton, _saveButton ])
+                             _replyLabel, _textLabel2, _dateLabel, _quoteView ])
             [self.contentView addSubview:v];
         for (UIImageView *iv in icons) [self.contentView addSubview:iv];
         for (UILabel *lb in labels) [self.contentView addSubview:lb];
-        // buttons above the content they cover
-        [self.contentView bringSubviewToFront:_avatarButton];
-        [self.contentView bringSubviewToFront:_headerButton];
-        [self.contentView bringSubviewToFront:_saveButton];
+        for (UIButton *b in abtns) [self.contentView addSubview:b];
+        // tap targets above the content they cover
+        for (UIView *v in @[ _bookmarkButton, _moreButton, _avatarButton, _headerButton ]) [self.contentView addSubview:v];
     }
     return self;
 }
@@ -513,13 +545,21 @@ static UIImage *CHVerifiedBadge(void)
         self.quoteView.hidden = YES;
     }
 
-    // counts
+    // counts, coloured by the tweet's own action state
+    UIColor *secondary = [th secondaryTextColor];
+    UIColor *green = [UIColor colorWithRed:0.0 green:0.72 blue:0.49 alpha:1];
+    UIColor *pink = [UIColor colorWithRed:0.95 green:0.09 blue:0.46 alpha:1];
+    UIColor *blue = [th accentColor];
     long long counts[] = { tweet.replyCount, tweet.retweetCount, tweet.likeCount, tweet.viewCount };
+    NSArray *names = @[ @"reply", @"retweet", tweet.favorited ? @"like-filled" : @"like", @"views" ];
+    UIColor *colors[4] = { secondary, tweet.retweeted ? green : secondary, tweet.favorited ? pink : secondary, secondary };
     for (NSInteger i = 0; i < 4; i++) {
+        ((UIImageView *)self.countIcons[(NSUInteger)i]).image = CHActionIcon(names[(NSUInteger)i], colors[i]);
         UILabel *lb = self.countLabels[(NSUInteger)i];
         lb.text = counts[i] > 0 ? [CHUtils formatBigCount:counts[i]] : @"";
+        lb.textColor = colors[i];
     }
-    [self setSaved:NO];   // the list calls -setSaved: with the real state right after (it owns the store)
+    [self.bookmarkButton setImage:CHActionIcon(tweet.bookmarked ? @"bookmark-filled" : @"bookmark", tweet.bookmarked ? blue : secondary) forState:UIControlStateNormal];
 
     [self setNeedsLayout];
 }
@@ -571,19 +611,26 @@ static UIImage *CHVerifiedBadge(void)
 
     self.dateLabel.frame = self.dateLabel.hidden ? CGRectZero : L.dateLine;
 
-    // action row: four groups left-aligned, the save star at the right
+    // action row: reply / retweet / like / views left-aligned; bookmark and more at the right
     CGFloat ax = L.actions.origin.x, ay = L.actions.origin.y, ah = L.actions.size.height;
+    CGFloat rightEdge = ax + L.actions.size.width;
+    self.moreButton.frame = CGRectMake(rightEdge - 28, ay + (ah - 28) / 2, 28, 28);
+    self.bookmarkButton.frame = CGRectMake(rightEdge - 28 - 32, ay + (ah - 28) / 2, 28, 28);
     CGFloat cx = ax;
-    CGFloat groupGap = CHIsPad() ? 34 : 26;
+    CGFloat groupGap = CHIsPad() ? 30 : 22;
+    CGFloat groupStart[4], groupWidth[4];
     for (NSInteger i = 0; i < 4; i++) {
         UIImageView *iv = self.countIcons[(NSUInteger)i];
         UILabel *lb = self.countLabels[(NSUInteger)i];
         iv.frame = CGRectMake(cx, ay + (ah - 18) / 2, 18, 18);
         CGFloat w = lb.text.length ? ceilf((float)[lb.text sizeWithFont:CHSmallFont()].width) + 4 : 0;
         lb.frame = CGRectMake(cx + 20, ay, w, ah);
+        groupStart[i] = cx;
+        groupWidth[i] = 20 + w;
         cx += 20 + w + groupGap;
     }
-    self.saveButton.frame = CGRectMake(ax + L.actions.size.width - 30, ay + (ah - 30) / 2, 30, 30);
+    for (NSInteger i = 0; i < 3; i++)
+        ((UIButton *)self.actionButtons[(NSUInteger)i]).frame = CGRectMake(groupStart[i] - 4, ay - 4, groupWidth[i] + 12, ah + 8);
 }
 
 - (void)layoutQuote:(CGSize)size
@@ -605,15 +652,11 @@ static UIImage *CHVerifiedBadge(void)
 - (void)tapUser { if ([self.delegate respondsToSelector:@selector(tweetCell:didTapUser:)]) [self.delegate tweetCell:self didTapUser:self.tweet.author]; }
 - (void)tapQuote { if (self.tweet.quoted && [self.delegate respondsToSelector:@selector(tweetCell:didTapQuoted:)]) [self.delegate tweetCell:self didTapQuoted:self.tweet.quoted]; }
 - (void)tapMedia:(UITapGestureRecognizer *)g { if ([self.delegate respondsToSelector:@selector(tweetCell:didTapMediaAtIndex:)]) [self.delegate tweetCell:self didTapMediaAtIndex:g.view.tag]; }
-- (void)tapSave { if ([self.delegate respondsToSelector:@selector(tweetCellDidToggleSave:)]) [self.delegate tweetCellDidToggleSave:self]; }
 
-// the list sets the save state through this (the cell has no access to the store)
-- (void)setSaved:(BOOL)saved
-{
-    CHTheme *th = [CHTheme shared];
-    UIColor *color = saved ? [th accentColor] : [th secondaryTextColor];
-    [self.saveButton setImage:[th starIconFilled:saved color:color size:18] forState:UIControlStateNormal];
-}
+- (void)action:(NSString *)name { if ([self.delegate respondsToSelector:@selector(tweetCell:didTapAction:)]) [self.delegate tweetCell:self didTapAction:name]; }
+- (void)tapActionButton:(UIButton *)b { [self action:@[ @"reply", @"retweet", @"like" ][(NSUInteger)b.tag]]; }
+- (void)tapBookmark { [self action:@"bookmark"]; }
+- (void)tapMore { [self action:@"more"]; }
 
 - (void)prepareForReuse
 {

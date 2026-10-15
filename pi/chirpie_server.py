@@ -64,7 +64,7 @@ TWIMG_RE = re.compile(r"(^|\.)twimg\.com$", re.I)
 
 _LOOP = asyncio.new_event_loop()
 _CLIENT = Client("en-US")
-_READY = {"account": "", "error": "", "logged_in": False}
+_READY = {"account": "", "uid": "", "error": "", "logged_in": False}
 _LOGIN_LOCK = threading.Lock()
 
 
@@ -91,7 +91,7 @@ async def _ensure_login():
             if os.path.exists(COOKIES):
                 _CLIENT.load_cookies(COOKIES)
                 me = await _CLIENT.user()
-                _READY.update(account=getattr(me, "screen_name", "") or "", logged_in=True, error="")
+                _READY.update(account=getattr(me, "screen_name", "") or "", uid=str(getattr(me, "id", "") or ""), logged_in=True, error="")
                 return
         except Exception as e:
             sys.stderr.write("chirpie: cached session invalid (%s); logging in again\n" % e)
@@ -108,7 +108,7 @@ async def _ensure_login():
         except Exception as e:
             sys.stderr.write("chirpie: could not save cookies: %s\n" % e)
         me = await _CLIENT.user()
-        _READY.update(account=getattr(me, "screen_name", "") or "", logged_in=True, error="")
+        _READY.update(account=getattr(me, "screen_name", "") or "", uid=str(getattr(me, "id", "") or ""), logged_in=True, error="")
 
 
 # --- turning twikit objects into the app's JSON -----------------------------------------------------------
@@ -174,6 +174,8 @@ def user_json(u):
         "url": _expand_user_url(u),
         "created": _user_ts(u),
         "pinnedId": (getattr(u, "pinned_tweet_ids", None) or [""])[0] if getattr(u, "pinned_tweet_ids", None) else "",
+        "isFollowing": bool(getattr(u, "is_following", None) if getattr(u, "is_following", None) is not None else getattr(u, "following", False)),
+        "followsYou": bool(getattr(u, "followed_by", False)),
     }
 
 
@@ -272,6 +274,9 @@ def tweet_json(tweet, depth=0):
         "conversationId": str(getattr(tweet, "conversation_id", "") or ""),
         "replyToId": str(getattr(tweet, "in_reply_to", "") or ""),
         "replyToHandle": getattr(tweet, "in_reply_to_screen_name", "") or "",
+        "favorited": bool(getattr(tweet, "favorited", False)),
+        "retweeted": bool(getattr(tweet, "retweeted", False)),
+        "bookmarked": bool(getattr(tweet, "bookmarked", False) or getattr(tweet, "is_bookmarked", False)),
         "media": [media_json(m) for m in media],
     }
     if retweeter is not None:
@@ -397,6 +402,180 @@ async def trends():
     return {"items": out}
 
 
+def users_page(result):
+    users = [user_json(u) for u in (result or [])]
+    users = [u for u in users if u and u["handle"]]
+    cursor = getattr(result, "next_cursor", "") or ""
+    return {"users": users, "bottom": cursor, "hasMore": bool(cursor and users)}
+
+
+async def followers(uid, name, which, cursor):
+    await _ensure_login()
+    if not uid:
+        u = await _CLIENT.get_user_by_screen_name(name)
+        uid = str(getattr(u, "id", "") or "")
+    fn = _CLIENT.get_user_following if which == "following" else _CLIENT.get_user_followers
+    result = await fn(uid, count=20) if not cursor else await fn(uid, count=20, cursor=cursor)
+    return users_page(result)
+
+
+async def bookmarks(cursor):
+    await _ensure_login()
+    result = await _CLIENT.get_bookmarks(count=20) if not cursor else await _CLIENT.get_bookmarks(count=20, cursor=cursor)
+    return page_json(result)
+
+
+# --- notifications --------------------------------------------------------------------------------------
+
+def _notification_json(n):
+    icon = getattr(n, "icon", None)
+    icon_id = ""
+    if isinstance(icon, dict):
+        icon_id = icon.get("id", "") or ""
+    elif icon is not None:
+        icon_id = getattr(icon, "id", "") or str(icon)
+    msg = getattr(n, "message", None)
+    text = msg if isinstance(msg, str) else (getattr(msg, "text", "") if msg is not None else "")
+    users = getattr(n, "from_users", None) or ([getattr(n, "from_user")] if getattr(n, "from_user", None) else [])
+    tj = None
+    nt = getattr(n, "tweet", None)
+    if nt is not None:
+        try:
+            tj = tweet_json(nt)
+        except Exception:
+            tj = None
+    ts = getattr(n, "timestamp_ms", None)
+    return {
+        "id": str(getattr(n, "id", "") or ""),
+        "icon": icon_id,              # heart_icon, retweet_icon, person_icon, bird_icon...
+        "text": text or "",
+        "time": int(int(ts) / 1000) if ts else 0,
+        "users": [u for u in (user_json(x) for x in users) if u],
+        "tweet": tj,
+    }
+
+
+async def notifications(kind, cursor):
+    await _ensure_login()
+    t = {"mentions": "Mentions", "verified": "Verified"}.get(kind, "All")
+    result = await _CLIENT.get_notifications(t, count=40) if not cursor else await _CLIENT.get_notifications(t, count=40, cursor=cursor)
+    items = [_notification_json(n) for n in (result or [])]
+    cursor2 = getattr(result, "next_cursor", "") or ""
+    return {"items": items, "bottom": cursor2, "hasMore": bool(cursor2 and items)}
+
+
+# --- actions (write) ------------------------------------------------------------------------------------
+
+async def do_action(action, obj_id):
+    await _ensure_login()
+    a = (action or "").lower()
+    if a == "like":
+        await _CLIENT.favorite_tweet(obj_id)
+    elif a == "unlike":
+        await _CLIENT.unfavorite_tweet(obj_id)
+    elif a == "retweet":
+        await _CLIENT.retweet(obj_id)
+    elif a == "unretweet":
+        await _CLIENT.delete_retweet(obj_id)
+    elif a == "bookmark":
+        await _CLIENT.bookmark_tweet(obj_id)
+    elif a == "unbookmark":
+        await _CLIENT.delete_bookmark(obj_id)
+    elif a == "delete":
+        await _CLIENT.delete_tweet(obj_id)
+    elif a == "follow":
+        await _CLIENT.follow_user(obj_id)
+    elif a == "unfollow":
+        await _CLIENT.unfollow_user(obj_id)
+    else:
+        raise ValueError("unknown action")
+    return {"ok": True, "action": a, "id": str(obj_id)}
+
+
+async def post_tweet(text, reply_to, quote_url, image_bytes, media_type):
+    await _ensure_login()
+    media_ids = []
+    if image_bytes:
+        import tempfile
+        suffix = ".png" if (media_type or "").endswith("png") else ".jpg"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as f:
+            f.write(image_bytes)
+            tmp = f.name
+        try:
+            mid = await _CLIENT.upload_media(tmp, wait_for_completion=True)
+            media_ids.append(mid)
+        finally:
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
+    kwargs = {}
+    if media_ids:
+        kwargs["media_ids"] = media_ids
+    if reply_to:
+        kwargs["reply_to"] = reply_to
+    if quote_url:
+        kwargs["attachment_url"] = quote_url
+    t = await _CLIENT.create_tweet(text=text or "", **kwargs)
+    return {"ok": True, "id": str(getattr(t, "id", "") or "")}
+
+
+# --- direct messages ------------------------------------------------------------------------------------
+
+def _message_json(m):
+    sender = str(getattr(m, "sender_id", "") or "")
+    return {
+        "id": str(getattr(m, "id", "") or ""),
+        "text": getattr(m, "text", "") or "",
+        "time": _int(getattr(m, "time", 0)) // 1000 if str(getattr(m, "time", "")).isdigit() else 0,
+        "senderId": sender,
+        "fromMe": sender == _READY.get("uid", ""),
+    }
+
+
+async def dm_history(uid, name, cursor):
+    await _ensure_login()
+    if not uid:
+        u = await _CLIENT.get_user_by_screen_name(name)
+        uid = str(getattr(u, "id", "") or "")
+    result = await _CLIENT.get_dm_history(uid) if not cursor else await _CLIENT.get_dm_history(uid, max_id=cursor)
+    msgs = [_message_json(m) for m in (result or [])]
+    cursor2 = getattr(result, "next_cursor", "") or (msgs[-1]["id"] if msgs else "")
+    return {"items": msgs, "uid": uid, "cursor": cursor2, "hasMore": bool(getattr(result, "next_cursor", ""))}
+
+
+async def dm_send(uid, name, text):
+    await _ensure_login()
+    if not uid:
+        u = await _CLIENT.get_user_by_screen_name(name)
+        uid = str(getattr(u, "id", "") or "")
+    m = await _CLIENT.send_dm(uid, text)
+    return {"ok": True, "message": _message_json(m), "uid": uid}
+
+
+async def dm_list():
+    await _ensure_login()
+    # twikit does not expose a stable inbox listing across versions; try a few, else empty (the app lets you open a
+    # conversation from a profile or by @handle).
+    for meth in ("get_dm_inbox", "get_inbox", "get_dm_conversations"):
+        fn = getattr(_CLIENT, meth, None)
+        if fn is None:
+            continue
+        try:
+            result = await fn()
+        except Exception as e:
+            sys.stderr.write("chirpie: %s failed: %s\n" % (meth, e))
+            continue
+        convos = []
+        for c in result or []:
+            u = getattr(c, "user", None) or getattr(c, "participant", None)
+            last = getattr(c, "last_message", None) or getattr(c, "message", None)
+            convos.append({"user": user_json(u), "last": getattr(last, "text", "") if last else "",
+                           "time": _int(getattr(last, "time", 0)) // 1000 if last and str(getattr(last, "time", "")).isdigit() else 0})
+        return {"items": [c for c in convos if c["user"]], "supported": True}
+    return {"items": [], "supported": False}
+
+
 # --- HTTP -------------------------------------------------------------------------------------------------
 
 class Handler(BaseHTTPRequestHandler):
@@ -452,10 +631,54 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send_json(run(suggest(one("q"))))
             if path == "/trends":
                 return self._send_json(run(trends()))
+            if path == "/bookmarks":
+                return self._send_json(run(bookmarks(one("cursor"))))
+            if path == "/notifications":
+                return self._send_json(run(notifications(one("kind", "all"), one("cursor"))))
+            if path == "/followers":
+                return self._send_json(run(followers(one("id"), one("name"), "followers", one("cursor"))))
+            if path == "/following":
+                return self._send_json(run(followers(one("id"), one("name"), "following", one("cursor"))))
+            if path == "/action":
+                return self._send_json(run(do_action(one("do"), one("id"))))
+            if path == "/dm/list":
+                return self._send_json(run(dm_list()))
+            if path == "/dm/history":
+                return self._send_json(run(dm_history(one("id"), one("name"), one("cursor"))))
+            if path == "/post" and self.command == "GET":
+                return self._send_json(run(post_tweet(one("text"), one("replyTo"), one("quoteUrl"), None, None)))
             if path == "/proxy":
                 return self._proxy(one("u") or one("url"))
         except Exception as e:
             sys.stderr.write("chirpie error on %s: %s\n" % (path, e))
+            return self._send_json({"error": "upstream failed", "detail": str(e)[:200]}, 502)
+        return self._send_json({"error": "not found"}, 404)
+
+    def do_POST(self):
+        import base64
+        parsed = urllib.parse.urlparse(self.path)
+        path = parsed.path.rstrip("/") or "/"
+        q = urllib.parse.parse_qs(parsed.query)
+        if not self._authorized(q):
+            return self._send_json({"error": "unauthorized"}, 401)
+        length = _int(self.headers.get("Content-Length", 0))
+        raw = self.rfile.read(length) if length else b""
+        try:
+            body = json.loads(raw.decode("utf-8")) if raw else {}
+        except ValueError:
+            return self._send_json({"error": "bad json"}, 400)
+        try:
+            if path == "/post":
+                image = None
+                b64 = body.get("imageB64") or ""
+                if b64:
+                    image = base64.b64decode(b64)
+                return self._send_json(run(post_tweet(body.get("text", ""), body.get("replyTo", ""),
+                                                       body.get("quoteUrl", ""), image, body.get("imageType", "")), timeout=120))
+            if path == "/dm/send":
+                return self._send_json(run(dm_send(body.get("id", ""), body.get("name", ""), body.get("text", ""))))
+        except Exception as e:
+            sys.stderr.write("chirpie error on POST %s: %s\n" % (path, e))
             return self._send_json({"error": "upstream failed", "detail": str(e)[:200]}, 502)
         return self._send_json({"error": "not found"}, 404)
 
