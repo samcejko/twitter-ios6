@@ -60,7 +60,6 @@
     self.textView.delegate = self;
     self.textView.backgroundColor = [UIColor clearColor];
     self.textView.textColor = [th primaryTextColor];
-    self.textView.keyboardAppearance = th.isDark ? UIKeyboardAppearanceDark : UIKeyboardAppearanceDefault;
     [self.view addSubview:self.textView];
 
     self.placeholder = [[UILabel alloc] init];

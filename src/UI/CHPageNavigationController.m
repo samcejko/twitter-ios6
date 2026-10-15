@@ -87,11 +87,10 @@
     return NO;
 }
 
-// A page that wants the whole screen (no bar) opts in with -prefersBarHidden; the hidden bottom is always bare
+// The hidden bottom page is bare; every real page shows the bar
 - (void)navigationController:(UINavigationController *)nav willShowViewController:(UIViewController *)vc animated:(BOOL)animated
 {
-    BOOL bare = [vc isKindOfClass:[CHStackBottom class]] ||
-                ([vc respondsToSelector:@selector(prefersBarHidden)] && [(id)vc prefersBarHidden]);
+    BOOL bare = [vc isKindOfClass:[CHStackBottom class]];
     if (self.navigationBarHidden != bare) [self setNavigationBarHidden:bare animated:animated];
 }
 
