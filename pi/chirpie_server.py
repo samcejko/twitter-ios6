@@ -38,6 +38,8 @@ Endpoints (all JSON unless noted):
     GET /notifications?kind=all|mentions&cursor=
     GET /followers?name=&id=&cursor=   GET /following?...
     GET /action?do=like|unlike|retweet|unretweet|bookmark|unbookmark|delete|follow|unfollow&id=
+    POST /login       {username, email, password, totp}  -> {auth_token, ct0, user}  (no cookies needed; password
+                      is used once to fetch cookies and never stored or logged; the user consents in the app)
     POST /post        {text, replyTo, quoteUrl, imageB64, imageType}
     GET /dm/list      GET /dm/history?name=&id=&cursor=      POST /dm/send {name|id, text}
     GET /proxy?u=<pbs/video.twimg.com url>   the media bytes, Range supported (no cookies needed)
@@ -457,6 +459,28 @@ async def do_action(client, action, obj_id):
     return {"ok": True, "action": a, "id": str(obj_id)}
 
 
+async def login_pw(username, email, password, totp):
+    """Sign in with a username + password (the user consented in the app), hand back the resulting cookies, and
+    keep nothing but the usual per-cookie client cache. The password is used once here and never stored or logged."""
+    client = Client("en-US")
+    kwargs = {"auth_info_1": username, "auth_info_2": email or username, "password": password}
+    if totp:
+        kwargs["totp_secret"] = totp
+    await client.login(**kwargs)
+    cookies = {}
+    try:
+        cookies = client.get_cookies() or {}
+    except Exception:
+        cookies = {}
+    auth = cookies.get("auth_token", "") or cookies.get("auth_token".upper(), "")
+    ct0 = cookies.get("ct0", "")
+    u = await client.user()
+    if auth:
+        client._ch_uid = str(getattr(u, "id", "") or "")
+        _CLIENTS[auth] = [client, time.time()]
+    return {"ok": bool(auth and ct0), "auth_token": auth, "ct0": ct0, "user": user_json(u)}
+
+
 async def post_tweet(client, text, reply_to, quote_url, image_bytes, media_type):
     media_ids = []
     if image_bytes:
@@ -608,14 +632,22 @@ class Handler(BaseHTTPRequestHandler):
         q = urllib.parse.parse_qs(parsed.query)
         if not self._authorized(q):
             return self._send_json({"error": "unauthorized"}, 401)
-        auth, ct0 = self._cookies(q)
-        if not auth:
-            return self._send_json({"error": "login required", "needsLogin": True}, 401)
         length = _int(self.headers.get("Content-Length", 0))
         try:
             body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
         except ValueError:
             return self._send_json({"error": "bad json"}, 400)
+        # /login creates the session from a username+password, so it needs no cookies yet
+        if path == "/login":
+            try:
+                return self._send_json(run(login_pw(body.get("username", ""), body.get("email", ""),
+                                                     body.get("password", ""), body.get("totp", "")), timeout=120))
+            except Exception as e:
+                sys.stderr.write("chirpie login failed: %s\n" % e)
+                return self._send_json({"error": "login failed", "detail": str(e)[:200]}, 401)
+        auth, ct0 = self._cookies(q)
+        if not auth:
+            return self._send_json({"error": "login required", "needsLogin": True}, 401)
         try:
             if path == "/post":
                 image = base64.b64decode(body["imageB64"]) if body.get("imageB64") else None

@@ -14,6 +14,11 @@ extern NSString * const CHNeedsLoginNotification;
 + (BOOL)loggedIn;                            // a server is set AND the X cookies are present
 + (void)checkHealth:(void (^)(BOOL ok, NSString *info, NSError *error))completion;   // just the service (no cookies)
 + (void)fetchMe:(void (^)(CHUser *user, NSError *error))completion;                  // the signed-in account for the cookies
+
+// Log in with a username + password (the helper fetches the cookies and hands them back; the app then stores only
+// the cookies, exactly like the cookie login). The password is not kept anywhere. The user must consent first.
++ (void)logInWithUsername:(NSString *)username password:(NSString *)password email:(NSString *)email totp:(NSString *)totp
+               completion:(void (^)(CHUser *user, NSError *error))completion;
 + (NSString *)accountHandle;                 // the signed-in @handle once /me has reported it, else nil
 
 // The home timeline. `following` = the Following feed rather than For You. `cursor` is a page's bottomCursor (nil =

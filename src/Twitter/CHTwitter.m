@@ -90,6 +90,30 @@ static NSString *g_account;
     }];
 }
 
++ (void)logInWithUsername:(NSString *)username password:(NSString *)password email:(NSString *)email totp:(NSString *)totp
+               completion:(void (^)(CHUser *user, NSError *error))completion
+{
+    // POST /login directly (it needs no cookies yet, so it bypasses the usual logged-in guard)
+    NSString *url = [self urlForPath:@"/login" params:nil];
+    if (!url) { CHMain(^{ if (completion) completion(nil, CHMakeError(CHErrorAPI, L(@"Set the server address in Settings first."))); }); return; }
+    NSDictionary *body = @{ @"username": username ?: @"", @"password": password ?: @"", @"email": email ?: @"", @"totp": totp ?: @"" };
+    [CHHTTP postJSON:url headers:[self authHeaders] object:body retries:0 completion:^(id json, NSInteger status, NSError *error) {
+        NSDictionary *d = [json isKindOfClass:[NSDictionary class]] ? json : nil;
+        NSString *auth = CHStr(d[@"auth_token"]), *ct0 = CHStr(d[@"ct0"]);
+        if (auth.length && ct0.length) {
+            [CHSettings setXAuthToken:auth];
+            [CHSettings setXCSRF:ct0];
+            [CHSettings save];
+            CHUser *user = [CHUser userFromJSON:d[@"user"]];
+            if (user.handle.length) g_account = user.handle;
+            if (completion) completion(user, nil);
+        } else {
+            NSError *err = error ?: CHMakeError(status ?: CHErrorAuth, CHStr(d[@"error"]) ?: L(@"Those details did not work."));
+            if (completion) completion(nil, err);
+        }
+    }];
+}
+
 #pragma mark - Timelines
 
 + (CHHTTPTask *)homeTimelineFollowing:(BOOL)following cursor:(NSString *)cursor

@@ -182,3 +182,17 @@
 "Could not load your profile." = "Profil se nepodařilo načíst.";
 "Those cookies did not work. Check you copied auth_token and ct0 from x.com while signed in." = "Tyhle cookies nefungují. Zkontroluj, že jsi zkopíroval auth_token a ct0 z x.com v přihlášeném stavu.";
 "In a desktop browser signed in to x.com: open the developer tools → Application → Cookies → https://x.com, and copy the values of auth_token and ct0. They stay on this device and are sent with each request; nothing is stored on the server. On this device, a cookie-viewer tweak can read them too." = "V prohlížeči na počítači přihlášeném na x.com: otevři vývojářské nástroje → Application → Cookies → https://x.com a zkopíruj hodnoty auth_token a ct0. Zůstanou jen na tomhle zařízení a posílají se s každým požadavkem; na serveru se neukládá nic. Na tomhle zařízení je umí přečíst i tweak na prohlížení cookies.";
+
+/* Přihlášení heslem (se souhlasem) */
+"Cookies" = "Cookies";
+"Password" = "Heslo";
+"Your X account" = "Tvůj X účet";
+"@username or email" = "@jméno nebo e-mail";
+"Email (if X asks)" = "E-mail (když X chce)";
+"2FA secret (optional)" = "2FA klíč (volitelné)";
+"I understand and agree" = "Rozumím a souhlasím";
+"Enter your username and password." = "Zadej jméno a heslo.";
+"Please agree to the note below the form first, or use the Cookies tab." = "Nejdřív odsouhlas poznámku pod formulářem, nebo použij záložku Cookies.";
+"Those details did not work." = "Tyhle údaje nefungují.";
+"Those details did not work. Try the Cookies tab, which is more reliable." = "Tyhle údaje nefungují. Zkus záložku Cookies, ta je spolehlivější.";
+"Your password is sent to the server (over HTTPS) and read there in plain text once, only to sign in to X for you. It is never stored or logged, and the operator does not keep it or touch your account - only the resulting cookies come back and are kept on this device. The Cookies tab is safer: there your password never leaves your device." = "Tvoje heslo se pošle na server (přes HTTPS) a tam se jednou přečte v čitelné podobě, jen aby tě přihlásilo na X. Neukládá se ani neloguje a provozovatel si ho nenechává ani nesahá na tvůj účet — zpět se vrátí jen výsledné cookies a ty zůstanou na tomhle zařízení. Záložka Cookies je bezpečnější: tam heslo zařízení vůbec neopustí.";
