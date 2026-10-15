@@ -37,10 +37,12 @@ back to the device. Cookies are the safer option; the password one is just for c
 
 ## Keep it working
 
-`twikit` is the maintained piece. When X changes something:
+`twifork` (a maintained fork of twikit that imports as `twikit`) is the piece that ages - upstream `twikit` on PyPI
+is currently broken against X's 2026 webpack bundle ("Couldn't get KEY_BYTE indices"), so this uses twifork. When X
+changes something again:
 
 ```sh
-pip install -U twikit    # or: docker compose build --no-cache && docker compose up -d
+pip install -U twifork    # or: docker compose build --no-cache && docker compose up -d
 ```
 
 ## Endpoints
