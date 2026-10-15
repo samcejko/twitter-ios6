@@ -327,7 +327,7 @@ static UIImage *CHVerifiedBadge(void)
         CHTheme *th = [CHTheme shared];
         self.backgroundColor = [th cardColor];
         self.contentView.backgroundColor = [th cardColor];
-        self.selectionStyle = UITableViewCellSelectionStyleDefault;
+        self.selectionStyle = UITableViewCellSelectionStyleGray;
 
         _retweetIcon = [[UIImageView alloc] init];
         _retweetLabel = [self labelFont:CHSmallFont() color:[th secondaryTextColor]];
