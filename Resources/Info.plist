@@ -107,6 +107,8 @@
 	</dict>
 	<key>UIFileSharingEnabled</key>
 	<true/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Choose a photo to attach to your post.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
