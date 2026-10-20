@@ -20,7 +20,7 @@
     self.view = [[UIView alloc] initWithFrame:[UIScreen mainScreen].bounds];
     self.view.backgroundColor = [[CHTheme shared] backgroundColor];
     self.status = [[UILabel alloc] init];
-    self.status.textAlignment = NSTextAlignmentCenter; self.status.numberOfLines = 0;
+    self.status.textAlignment = UITextAlignmentCenter; self.status.numberOfLines = 0;
     self.status.textColor = [[CHTheme shared] secondaryTextColor]; self.status.font = [[CHTheme shared] bodyFont];
     self.status.hidden = YES;
     [self.view addSubview:self.status];

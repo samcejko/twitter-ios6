@@ -48,7 +48,7 @@
 + (CGFloat)heightFor:(CHMessage *)m width:(CGFloat)width
 {
     CGFloat maxW = [self bubbleMaxWidth:width] - 24;
-    CGSize sz = [[CHUtils displayText:m.text] sizeWithFont:[self font] constrainedToSize:CGSizeMake(maxW, 2000) lineBreakMode:NSLineBreakByWordWrapping];
+    CGSize sz = [[CHUtils displayText:m.text] sizeWithFont:[self font] constrainedToSize:CGSizeMake(maxW, 2000) lineBreakMode:UILineBreakModeWordWrap];
     return ceilf((float)sz.height) + 20 + 10;
 }
 
@@ -57,7 +57,7 @@
     [super layoutSubviews];
     CGFloat pad = 10, width = self.contentView.bounds.size.width;
     CGFloat maxW = [CHMessageCell bubbleMaxWidth:width] - 24;
-    CGSize sz = [self.label.text sizeWithFont:[CHMessageCell font] constrainedToSize:CGSizeMake(maxW, 2000) lineBreakMode:NSLineBreakByWordWrapping];
+    CGSize sz = [self.label.text sizeWithFont:[CHMessageCell font] constrainedToSize:CGSizeMake(maxW, 2000) lineBreakMode:UILineBreakModeWordWrap];
     CGFloat bw = ceilf((float)sz.width) + 24, bh = ceilf((float)sz.height) + 20;
     CGFloat x = (self.tag == 1) ? width - pad - bw : pad;
     self.bubble.frame = CGRectMake(x, 5, bw, bh);
@@ -124,7 +124,7 @@
     [self.view addSubview:self.inputBar];
 
     self.status = [[UILabel alloc] init];
-    self.status.textAlignment = NSTextAlignmentCenter;
+    self.status.textAlignment = UITextAlignmentCenter;
     self.status.textColor = [th secondaryTextColor]; self.status.font = [th bodyFont]; self.status.hidden = YES;
     [self.view addSubview:self.status];
 }
@@ -156,7 +156,7 @@
 
 - (void)keyboard:(NSNotification *)note
 {
-    CGRect end = [note.userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
+    CGRect end = [[note.userInfo objectForKey:UIKeyboardFrameEndUserInfoKey] CGRectValue];
     CGRect local = [self.view convertRect:end fromView:nil];
     CGFloat top = MIN(local.origin.y, self.view.bounds.size.height);
     [UIView animateWithDuration:0.25 animations:^{
@@ -206,13 +206,13 @@
 {
     CHMessageCell *cell = [tableView dequeueReusableCellWithIdentifier:@"m"];
     if (!cell) cell = [[CHMessageCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"m"];
-    [cell setMessage:self.messages[(NSUInteger)indexPath.row]];
+    [cell setMessage:[self.messages objectAtIndex:(NSUInteger)indexPath.row]];
     return cell;
 }
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    return [CHMessageCell heightFor:self.messages[(NSUInteger)indexPath.row] width:tableView.bounds.size.width];
+    return [CHMessageCell heightFor:[self.messages objectAtIndex:(NSUInteger)indexPath.row] width:tableView.bounds.size.width];
 }
 
 - (void)dealloc { [[NSNotificationCenter defaultCenter] removeObserver:self]; }

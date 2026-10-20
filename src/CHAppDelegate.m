@@ -105,7 +105,7 @@ static BOOL CHPressView(UIView *v, NSString *text)
         [CHLinkRouter openHashtag:[tag stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding] ?: tag];
         return YES;
     }
-    if ([target isEqualToString:@"search"]) { [CHLinkRouter openSearch:params[@"q"]]; return YES; }
+    if ([target isEqualToString:@"search"]) { [CHLinkRouter openSearch:[params objectForKey:@"q"]]; return YES; }
     if ([target isEqualToString:@"compose"]) {
         CHComposeViewController *c = [CHComposeViewController composeNew];
         UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:c];
@@ -113,12 +113,12 @@ static BOOL CHPressView(UIView *v, NSString *text)
         [[self topController] presentViewController:nav animated:YES completion:nil];
         return YES;
     }
-    if ([target isEqualToString:@"open"] && [params[@"url"] length]) {
-        if (![CHLinkRouter openLink:params[@"url"]]) [CHUtils alertWithTitle:L(@"Open a link") message:L(@"That does not look like a Twitter link.")];
+    if ([target isEqualToString:@"open"] && [[params objectForKey:@"url"] length]) {
+        if (![CHLinkRouter openLink:[params objectForKey:@"url"]]) [CHUtils alertWithTitle:L(@"Open a link") message:L(@"That does not look like a Twitter link.")];
         return YES;
     }
     if ([target isEqualToString:@"server"]) {
-        if ([params[@"url"] length]) [CHSettings setServerBaseURL:params[@"url"]];
+        if ([[params objectForKey:@"url"] length]) [CHSettings setServerBaseURL:[params objectForKey:@"url"]];
         [CHUtils alertWithTitle:L(@"Settings") message:[CHSettings serverBaseURL].length ? [CHSettings serverBaseURL] : L(@"Not set")];
         return YES;
     }
@@ -126,7 +126,7 @@ static BOOL CHPressView(UIView *v, NSString *text)
     BOOL debug = [[NSFileManager defaultManager] fileExistsAtPath:[[CHUtils documentsPath] stringByAppendingPathComponent:@"debug"]];
     if (!debug) return YES;
     UIViewController *top = [self topController];
-    if ([target isEqualToString:@"tab"]) { [self.root selectTab:[params[@"i"] integerValue]]; return YES; }
+    if ([target isEqualToString:@"tab"]) { [self.root selectTab:[[params objectForKey:@"i"] integerValue]]; return YES; }
     if ([target isEqualToString:@"stats"]) {
         struct task_basic_info info; mach_msg_type_number_t count = TASK_BASIC_INFO_COUNT;
         if (task_info(mach_task_self(), TASK_BASIC_INFO, (task_info_t)&info, &count) == KERN_SUCCESS)
@@ -136,7 +136,7 @@ static BOOL CHPressView(UIView *v, NSString *text)
         return YES;
     }
     if ([target isEqualToString:@"lang"]) {
-        NSString *set = params[@"set"] ?: @"system";
+        NSString *set = [params objectForKey:@"set"] ?: @"system";
         NSUserDefaults *d = [NSUserDefaults standardUserDefaults];
         if ([set isEqualToString:@"system"]) [d removeObjectForKey:@"AppleLanguages"]; else [d setObject:@[ set ] forKey:@"AppleLanguages"];
         [d synchronize];
@@ -145,7 +145,7 @@ static BOOL CHPressView(UIView *v, NSString *text)
         return YES;
     }
     if ([target isEqualToString:@"link"]) {
-        NSString *link = params[@"url"];
+        NSString *link = [params objectForKey:@"url"];
         if (link.length) [CHLinkRouter openWebLink:link from:top anchor:nil];
         return YES;
     }
@@ -167,15 +167,15 @@ static BOOL CHPressView(UIView *v, NSString *text)
         return YES;
     }
     if ([target isEqualToString:@"press"]) {
-        NSString *byTitle = params[@"title"];
-        NSInteger n = [params[@"n"] integerValue];
+        NSString *byTitle = [params objectForKey:@"title"];
+        NSInteger n = [[params objectForKey:@"n"] integerValue];
         NSMutableArray *views = [NSMutableArray array];
         UIView *topView = top.navigationController.view ?: top.view;
         if (topView) [views addObject:topView];
         for (UIWindow *w in [UIApplication sharedApplication].windows) [views addObject:w];
         BOOL pressed = NO;
         for (NSUInteger i = 0; i < views.count && !pressed; i++) {
-            UIView *v = views[i];
+            UIView *v = [views objectAtIndex:i];
             if (!byTitle.length && [v isKindOfClass:[UIActionSheet class]] && ((UIActionSheet *)v).visible) {
                 UIActionSheet *sheet = (UIActionSheet *)v;
                 if ([sheet.delegate respondsToSelector:@selector(actionSheet:clickedButtonAtIndex:)]) [sheet.delegate actionSheet:sheet clickedButtonAtIndex:n];
@@ -207,7 +207,7 @@ static BOOL CHPressView(UIView *v, NSString *text)
             UIView *v = stack.lastObject; [stack removeLastObject];
             if ([v isKindOfClass:[UIScrollView class]] && ((UIScrollView *)v).contentSize.height > v.bounds.size.height + 1) {
                 UIScrollView *sv = (UIScrollView *)v;
-                CGFloat dir = [params[@"dir"] isEqualToString:@"up"] ? -1 : 1;
+                CGFloat dir = [[params objectForKey:@"dir"] isEqualToString:@"up"] ? -1 : 1;
                 CGFloat y = MAX(0, MIN(sv.contentSize.height - sv.bounds.size.height, sv.contentOffset.y + dir * sv.bounds.size.height));
                 [sv setContentOffset:CGPointMake(0, y) animated:YES];
                 break;

@@ -86,7 +86,7 @@ static NSDictionary *CHTwitterMediaHeaders(void)
 
     self.pages = [NSMutableArray array];
     for (NSUInteger i = 0; i < self.media.count; i++) {
-        CHMedia *m = self.media[i];
+        CHMedia *m = [self.media objectAtIndex:i];
         UIView *page;
         if (m.isVideo) {
             page = [[UIView alloc] init];
@@ -129,7 +129,7 @@ static NSDictionary *CHTwitterMediaHeaders(void)
     CGSize size = self.pager.bounds.size;
     if (size.width < 1) return;
     for (NSUInteger i = 0; i < self.pages.count; i++) {
-        UIView *page = self.pages[i];
+        UIView *page = [self.pages objectAtIndex:i];
         page.frame = CGRectMake(i * size.width, 0, size.width, size.height);
         if ([page isKindOfClass:[CHPhotoPage class]]) {
             CHPhotoPage *pp = (CHPhotoPage *)page;
@@ -151,7 +151,7 @@ static NSDictionary *CHTwitterMediaHeaders(void)
 - (void)showVideoForPage:(NSInteger)page
 {
     if (page < 0 || page >= (NSInteger)self.media.count) return;
-    CHMedia *m = self.media[(NSUInteger)page];
+    CHMedia *m = [self.media objectAtIndex:(NSUInteger)page];
     if (!m.isVideo) { [self.player stop]; [self.player.view removeFromSuperview]; self.player = nil; self.playerPage = -1; return; }
     if (self.playerPage == page && self.player) return;
     [self.player stop];
@@ -167,7 +167,7 @@ static NSDictionary *CHTwitterMediaHeaders(void)
     mp.controlStyle = MPMovieControlStyleEmbedded;
     mp.shouldAutoplay = YES;
     mp.repeatMode = [m.type isEqualToString:@"gif"] ? MPMovieRepeatModeOne : MPMovieRepeatModeNone;
-    UIView *host = self.pages[(NSUInteger)page];
+    UIView *host = [self.pages objectAtIndex:(NSUInteger)page];
     mp.view.frame = host.bounds;
     mp.view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     [host addSubview:mp.view];

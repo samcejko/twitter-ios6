@@ -97,7 +97,7 @@ static const NSUInteger CHMaxSaved = 1000;
     if (!q.length) return;
     NSMutableArray *list = [[self searchHistory] mutableCopy];
     for (NSInteger i = (NSInteger)list.count - 1; i >= 0; i--)
-        if ([list[(NSUInteger)i] caseInsensitiveCompare:q] == NSOrderedSame) [list removeObjectAtIndex:(NSUInteger)i];
+        if ([[list objectAtIndex:(NSUInteger)i] caseInsensitiveCompare:q] == NSOrderedSame) [list removeObjectAtIndex:(NSUInteger)i];
     [list insertObject:q atIndex:0];
     while (list.count > 20) [list removeLastObject];
     [DEF setObject:list forKey:@"searchHistory"];
@@ -112,17 +112,17 @@ static const NSUInteger CHMaxSaved = 1000;
 + (BOOL)isSaved:(NSString *)tweetId
 {
     if (!tweetId.length) return NO;
-    for (NSDictionary *d in [self savedTweets]) if ([CHStr(d[@"id"]) isEqualToString:tweetId]) return YES;
+    for (NSDictionary *d in [self savedTweets]) if ([CHStr([d objectForKey:@"id"]) isEqualToString:tweetId]) return YES;
     return NO;
 }
 
 + (void)saveTweetJSON:(NSDictionary *)json
 {
-    NSString *tid = CHStr(json[@"id"]);
+    NSString *tid = CHStr([json objectForKey:@"id"]);
     if (!tid.length) return;
     NSMutableArray *list = [[self savedTweets] mutableCopy];
     for (NSInteger i = (NSInteger)list.count - 1; i >= 0; i--)
-        if ([CHStr(list[(NSUInteger)i][@"id"]) isEqualToString:tid]) [list removeObjectAtIndex:(NSUInteger)i];
+        if ([CHStr([[list objectAtIndex:(NSUInteger)i] objectForKey:@"id"]) isEqualToString:tid]) [list removeObjectAtIndex:(NSUInteger)i];
     [list insertObject:json atIndex:0];
     while (list.count > CHMaxSaved) [list removeLastObject];
     [DEF setObject:list forKey:@"savedTweets"];
@@ -134,7 +134,7 @@ static const NSUInteger CHMaxSaved = 1000;
 {
     NSMutableArray *list = [[self savedTweets] mutableCopy];
     for (NSInteger i = (NSInteger)list.count - 1; i >= 0; i--)
-        if ([CHStr(list[(NSUInteger)i][@"id"]) isEqualToString:tweetId]) [list removeObjectAtIndex:(NSUInteger)i];
+        if ([CHStr([[list objectAtIndex:(NSUInteger)i] objectForKey:@"id"]) isEqualToString:tweetId]) [list removeObjectAtIndex:(NSUInteger)i];
     [DEF setObject:list forKey:@"savedTweets"];
     [self save];
     [self notifyLibrary];

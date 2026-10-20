@@ -88,7 +88,7 @@
     self.counter = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 44, 20)];
     self.counter.font = [UIFont systemFontOfSize:13];
     self.counter.textColor = [th secondaryTextColor];
-    self.counter.textAlignment = NSTextAlignmentRight;
+    self.counter.textAlignment = UITextAlignmentRight;
     self.counter.backgroundColor = [UIColor clearColor];
     UIBarButtonItem *photo = [[UIBarButtonItem alloc] initWithTitle:L(@"Photo") style:UIBarButtonItemStyleBordered target:self action:@selector(pickPhoto)];
     UIBarButtonItem *flex = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil];
@@ -104,7 +104,7 @@
     CGFloat pad = 12, w = self.view.bounds.size.width - 2 * pad;
     CGFloat y = [self topInset] + 8;
     if (self.contextLabel) {
-        CGFloat h = ceilf((float)[self.contextLabel.text sizeWithFont:self.contextLabel.font constrainedToSize:CGSizeMake(w, 60) lineBreakMode:NSLineBreakByWordWrapping].height);
+        CGFloat h = ceilf((float)[self.contextLabel.text sizeWithFont:self.contextLabel.font constrainedToSize:CGSizeMake(w, 60) lineBreakMode:UILineBreakModeWordWrap].height);
         self.contextLabel.frame = CGRectMake(pad, y, w, h);
         y += h + 6;
     }
@@ -155,7 +155,7 @@
 
 - (void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary *)info
 {
-    UIImage *image = info[UIImagePickerControllerEditedImage] ?: info[UIImagePickerControllerOriginalImage];
+    UIImage *image = [info objectForKey:UIImagePickerControllerEditedImage] ?: [info objectForKey:UIImagePickerControllerOriginalImage];
     [self dismissViewControllerAnimated:YES completion:^{
         if (image) {
             self.attachedImage = [self downscale:image to:1600];

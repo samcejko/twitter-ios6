@@ -46,7 +46,7 @@ static NSString * const CHCellId = @"tweet";
 
     _statusLabel = [[UILabel alloc] init];
     _statusLabel.numberOfLines = 0;
-    _statusLabel.textAlignment = NSTextAlignmentCenter;
+    _statusLabel.textAlignment = UITextAlignmentCenter;
     _statusLabel.font = [th bodyFont];
     _statusLabel.textColor = [th secondaryTextColor];
     _statusLabel.hidden = YES;
@@ -193,7 +193,7 @@ static NSString * const CHCellId = @"tweet";
 {
     CHTweetCell *cell = [tableView dequeueReusableCellWithIdentifier:CHCellId];
     if (!cell) cell = [[CHTweetCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:CHCellId];
-    CHTweet *tweet = self.tweets[(NSUInteger)indexPath.row];
+    CHTweet *tweet = [self.tweets objectAtIndex:(NSUInteger)indexPath.row];
     cell.delegate = self;
     [cell setTweet:tweet];
     return cell;
@@ -201,14 +201,14 @@ static NSString * const CHCellId = @"tweet";
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    CHTweet *tweet = self.tweets[(NSUInteger)indexPath.row];
+    CHTweet *tweet = [self.tweets objectAtIndex:(NSUInteger)indexPath.row];
     return [CHTweetCell heightForTweet:tweet width:tableView.bounds.size.width];
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
-    [CHLinkRouter openTweet:self.tweets[(NSUInteger)indexPath.row]];
+    [CHLinkRouter openTweet:[self.tweets objectAtIndex:(NSUInteger)indexPath.row]];
 }
 
 - (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath

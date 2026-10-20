@@ -182,7 +182,7 @@ typedef enum { CHSearchModeTrends, CHSearchModeTweets, CHSearchModePeople } CHSe
     if (self.mode == CHSearchModePeople) {
         CHUserCell *cell = [tableView dequeueReusableCellWithIdentifier:@"user"];
         if (!cell) cell = [[CHUserCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"user"];
-        [cell setUser:self.users[(NSUInteger)indexPath.row]];
+        [cell setUser:[self.users objectAtIndex:(NSUInteger)indexPath.row]];
         return cell;
     }
     // trends mode: recent searches + trends
@@ -191,10 +191,10 @@ typedef enum { CHSearchModeTrends, CHSearchModeTweets, CHSearchModePeople } CHSe
     [th styleCell:cell];
     cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
     if (indexPath.section == 0) {
-        cell.textLabel.text = [CHSettings searchHistory][(NSUInteger)indexPath.row];
+        cell.textLabel.text = [[CHSettings searchHistory] objectAtIndex:(NSUInteger)indexPath.row];
         cell.detailTextLabel.text = nil;
     } else {
-        CHTrend *t = self.trends[(NSUInteger)indexPath.row];
+        CHTrend *t = [self.trends objectAtIndex:(NSUInteger)indexPath.row];
         cell.textLabel.text = t.name;
         NSMutableArray *bits = [NSMutableArray array];
         if (t.context.length) [bits addObject:t.context];
@@ -214,10 +214,10 @@ typedef enum { CHSearchModeTrends, CHSearchModeTweets, CHSearchModePeople } CHSe
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
-    if (self.mode == CHSearchModeTweets) { [CHLinkRouter openTweet:self.tweets[(NSUInteger)indexPath.row]]; return; }
-    if (self.mode == CHSearchModePeople) { [CHLinkRouter openProfile:[(CHUser *)self.users[(NSUInteger)indexPath.row] handle]]; return; }
-    if (indexPath.section == 0) [self searchFor:[CHSettings searchHistory][(NSUInteger)indexPath.row]];
-    else [self searchFor:[(CHTrend *)self.trends[(NSUInteger)indexPath.row] query]];
+    if (self.mode == CHSearchModeTweets) { [CHLinkRouter openTweet:[self.tweets objectAtIndex:(NSUInteger)indexPath.row]]; return; }
+    if (self.mode == CHSearchModePeople) { [CHLinkRouter openProfile:[(CHUser *)[self.users objectAtIndex:(NSUInteger)indexPath.row] handle]]; return; }
+    if (indexPath.section == 0) [self searchFor:[[CHSettings searchHistory] objectAtIndex:(NSUInteger)indexPath.row]];
+    else [self searchFor:[(CHTrend *)[self.trends objectAtIndex:(NSUInteger)indexPath.row] query]];
 }
 
 - (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath

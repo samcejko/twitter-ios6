@@ -31,7 +31,7 @@ static NSMutableArray *g_choices;
 - (void)actionSheet:(UIActionSheet *)sheet didDismissWithButtonIndex:(NSInteger)index
 {
     sheet.delegate = nil;
-    if (self.chosen >= 0) [CHLinkRouter openWebLink:self.links[(NSUInteger)self.chosen] from:self.controller anchor:self.anchor];
+    if (self.chosen >= 0) [CHLinkRouter openWebLink:[self.links objectAtIndex:(NSUInteger)self.chosen] from:self.controller anchor:self.anchor];
     CHLinkChoice *me = self;
     dispatch_async(dispatch_get_main_queue(), ^{ [g_choices removeObject:me]; });
 }
@@ -100,7 +100,7 @@ static NSArray *CHReservedHandles(void)
     if (!s.length) return NO;
     // a bare @handle
     if ([s hasPrefix:@"@"] && s.length > 1) {
-        NSString *h = [[s substringFromIndex:1] componentsSeparatedByCharactersInSet:[[NSCharacterSet alphanumericCharacterSet] invertedSet]][0];
+        NSString *h = [[[s substringFromIndex:1] componentsSeparatedByCharactersInSet:[[NSCharacterSet alphanumericCharacterSet] invertedSet]] objectAtIndex:0];
         if (h.length) { [self openProfile:h]; return YES; }
     }
     // a bare tweet id
@@ -123,18 +123,18 @@ static NSArray *CHReservedHandles(void)
     if (tid) { [self openTweetId:tid]; return YES; }
 
     NSArray *parts = [[path stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"/"]] componentsSeparatedByString:@"/"];
-    NSString *first = parts.count ? [parts[0] lowercaseString] : @"";
-    if ([first isEqualToString:@"hashtag"] && parts.count > 1 && [parts[1] length]) {
-        [self openHashtag:[parts[1] stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding] ?: parts[1]];
+    NSString *first = parts.count ? [[parts objectAtIndex:0] lowercaseString] : @"";
+    if ([first isEqualToString:@"hashtag"] && parts.count > 1 && [[parts objectAtIndex:1] length]) {
+        [self openHashtag:[[parts objectAtIndex:1] stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding] ?: [parts objectAtIndex:1]];
         return YES;
     }
     if ([first isEqualToString:@"search"]) {
-        [self openSearch:CHStr([CHUtils parseQuery:url.query ?: @""][@"q"])];
+        [self openSearch:CHStr([[CHUtils parseQuery:url.query ?: @""] objectForKey:@"q"])];
         return YES;
     }
     // /<handle> (profile). /i/..., /intent/... and the other reserved roots go to a browser.
     if (parts.count >= 1 && first.length && ![CHReservedHandles() containsObject:first]) {
-        [self openProfile:parts[0]];
+        [self openProfile:[parts objectAtIndex:0]];
         return YES;
     }
     return NO;
@@ -161,7 +161,7 @@ static NSArray *CHReservedHandles(void)
     // from that very profile (a tweet opened from it, then its author tapped): back rather than a second copy
     NSArray *pages = [self visiblePages];
     if (pages.count >= 2) {
-        UIViewController *below = pages[pages.count - 2];
+        UIViewController *below = [pages objectAtIndex:pages.count - 2];
         if ([below isKindOfClass:[CHProfileViewController class]] &&
             [[(CHProfileViewController *)below handle] caseInsensitiveCompare:handle] == NSOrderedSame) {
             [[self topNav] popViewControllerAnimated:YES];
@@ -212,7 +212,7 @@ static NSArray *CHReservedHandles(void)
 + (void)openWebLinks:(NSArray *)links from:(UIViewController *)controller anchor:(UIView *)anchor
 {
     if (!links.count) return;
-    if (links.count == 1) { [self openWebLink:links[0] from:controller anchor:anchor]; return; }
+    if (links.count == 1) { [self openWebLink:[links objectAtIndex:0] from:controller anchor:anchor]; return; }
     CHLinkChoice *choice = [[CHLinkChoice alloc] init];
     choice.links = links;
     choice.controller = controller;

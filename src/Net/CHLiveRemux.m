@@ -1,3 +1,4 @@
+#import "CHLegacyCollections.h"
 #import "CHLiveRemux.h"
 #import "CHHTTPRequest.h"
 #import "CHSettings.h"
@@ -227,7 +228,7 @@ static void CHAppendTimestamp(NSMutableData *pes, uint8_t prefix, int64_t ts)
     for (int hop = 0; hop < 5 && !self.stopped; hop++) {
         CHHTTPRequest *r = [[CHHTTPRequest alloc] initWithMethod:@"GET" URL:url];
         NSMutableDictionary *h = [NSMutableDictionary dictionaryWithDictionary:self.headers ?: @{}];
-        h[@"Accept"] = @"*/*";
+        CHLegacyDictionarySet(h, @"Accept", @"*/*");
         r.headers = h;
         r.verifyTLS = [CHSettings verifyTLS];
         r.highPriority = YES;
@@ -241,7 +242,7 @@ static void CHAppendTimestamp(NSMutableData *pes, uint8_t prefix, int64_t ts)
         NSURL *current = url;
         r.onHeaders = ^(NSInteger s, NSDictionary *hdrs) {
             status = s;
-            if (s >= 300 && s < 400 && [hdrs[@"location"] length]) redirect = [[NSURL URLWithString:hdrs[@"location"] relativeToURL:current] absoluteURL];
+            if (s >= 300 && s < 400 && [[hdrs objectForKey:@"location"] length]) redirect = [[NSURL URLWithString:[hdrs objectForKey:@"location"] relativeToURL:current] absoluteURL];
         };
         r.onData = ^(NSData *data) {
             CHLiveRemux *me = weakSelf;

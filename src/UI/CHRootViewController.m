@@ -58,9 +58,9 @@ static UIImage *CHTabIcon(NSString *name)
         NSArray *icons = @[ [th tabIconHome], [th tabIconSearch], CHTabIcon(@"bell"), CHTabIcon(@"envelope"), CHTabIcon(@"person") ];
         NSMutableArray *navs = [NSMutableArray array];
         for (NSUInteger i = 0; i < vcs.count; i++) {
-            UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vcs[i]];
+            UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:[vcs objectAtIndex:i]];
             [th applyToNavigationBar:nav.navigationBar];
-            nav.tabBarItem = [[UITabBarItem alloc] initWithTitle:titles[i] image:icons[i] tag:(NSInteger)i];
+            nav.tabBarItem = [[UITabBarItem alloc] initWithTitle:[titles objectAtIndex:i] image:[icons objectAtIndex:i] tag:(NSInteger)i];
             [navs addObject:nav];
         }
         self.viewControllers = navs;

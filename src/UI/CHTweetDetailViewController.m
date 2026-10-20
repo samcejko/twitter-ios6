@@ -142,9 +142,9 @@
 
 - (CHTweet *)tweetAt:(NSIndexPath *)ip
 {
-    if (ip.section == 0) return self.ancestors[(NSUInteger)ip.row];
+    if (ip.section == 0) return [self.ancestors objectAtIndex:(NSUInteger)ip.row];
     if (ip.section == 1) return self.tweet;
-    return self.replies[(NSUInteger)ip.row];
+    return [self.replies objectAtIndex:(NSUInteger)ip.row];
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath

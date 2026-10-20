@@ -1,3 +1,4 @@
+#import "CHLegacyCollections.h"
 #import "CHTwitter.h"
 #import "CHHTTP.h"
 #import "CHSettings.h"
@@ -19,14 +20,14 @@ static NSString *g_account;
 {
     NSMutableDictionary *h = [NSMutableDictionary dictionary];
     NSString *auth = [CHSettings xAuthToken], *ct0 = [CHSettings xCSRF];
-    if (auth.length) h[@"X-Chirpie-Auth"] = auth;
-    if (ct0.length) h[@"X-Chirpie-CT0"] = ct0;
+    if (auth.length) CHLegacyDictionarySet(h, @"X-Chirpie-Auth", auth);
+    if (ct0.length) CHLegacyDictionarySet(h, @"X-Chirpie-CT0", ct0);
     return h;
 }
 
 + (void)noteIfNeedsLogin:(NSDictionary *)json status:(NSInteger)status
 {
-    if (status == 401 || CHBool(json[@"needsLogin"]))
+    if (status == 401 || CHBool([json objectForKey:@"needsLogin"]))
         CHMain(^{ [[NSNotificationCenter defaultCenter] postNotificationName:CHNeedsLoginNotification object:nil]; });
 }
 
@@ -37,7 +38,7 @@ static NSString *g_account;
     if (!base.length) return nil;
     NSMutableArray *pairs = [NSMutableArray array];
     for (NSString *key in params) {
-        id value = params[key];
+        id value = [params objectForKey:key];
         if (value == nil || value == [NSNull null]) continue;
         NSString *s = [value isKindOfClass:[NSString class]] ? value : [value description];
         if (!s.length) continue;
@@ -66,7 +67,7 @@ static NSString *g_account;
         NSDictionary *d = [json isKindOfClass:[NSDictionary class]] ? json : nil;
         [self noteIfNeedsLogin:d status:status];
         NSError *err = error;
-        if (!err && d[@"error"]) err = CHMakeError(status ?: CHErrorAPI, CHStr(d[@"error"]));
+        if (!err && [d objectForKey:@"error"]) err = CHMakeError(status ?: CHErrorAPI, CHStr([d objectForKey:@"error"]));
         if (completion) completion(d, err);
     }];
 }
@@ -74,7 +75,7 @@ static NSString *g_account;
 + (void)checkHealth:(void (^)(BOOL ok, NSString *info, NSError *error))completion
 {
     [self get:@"/health" params:nil completion:^(NSDictionary *json, NSError *error) {
-        BOOL ok = !error && CHBool(json[@"ok"]);
+        BOOL ok = !error && CHBool([json objectForKey:@"ok"]);
         if (completion) completion(ok, nil, error);
     }];
 }
@@ -82,7 +83,7 @@ static NSString *g_account;
 + (void)fetchMe:(void (^)(CHUser *user, NSError *error))completion
 {
     [self get:@"/me" params:nil completion:^(NSDictionary *json, NSError *error) {
-        CHUser *user = error ? nil : [CHUser userFromJSON:json[@"user"]];
+        CHUser *user = error ? nil : [CHUser userFromJSON:[json objectForKey:@"user"]];
         if (user.handle.length) g_account = user.handle;
         if (completion) completion(user, error);
     }];
@@ -97,16 +98,16 @@ static NSString *g_account;
     NSDictionary *body = @{ @"username": username ?: @"", @"password": password ?: @"", @"email": email ?: @"", @"totp": totp ?: @"" };
     [CHHTTP postJSON:url headers:[self authHeaders] object:body retries:0 completion:^(id json, NSInteger status, NSError *error) {
         NSDictionary *d = [json isKindOfClass:[NSDictionary class]] ? json : nil;
-        NSString *auth = CHStr(d[@"auth_token"]), *ct0 = CHStr(d[@"ct0"]);
+        NSString *auth = CHStr([d objectForKey:@"auth_token"]), *ct0 = CHStr([d objectForKey:@"ct0"]);
         if (auth.length && ct0.length) {
             [CHSettings setXAuthToken:auth];
             [CHSettings setXCSRF:ct0];
             [CHSettings save];
-            CHUser *user = [CHUser userFromJSON:d[@"user"]];
+            CHUser *user = [CHUser userFromJSON:[d objectForKey:@"user"]];
             if (user.handle.length) g_account = user.handle;
             if (completion) completion(user, nil);
         } else {
-            NSError *err = error ?: CHMakeError(status ?: CHErrorAuth, CHStr(d[@"error"]) ?: L(@"Those details did not work."));
+            NSError *err = error ?: CHMakeError(status ?: CHErrorAuth, CHStr([d objectForKey:@"error"]) ?: L(@"Those details did not work."));
             if (completion) completion(nil, err);
         }
     }];
@@ -127,7 +128,7 @@ static NSString *g_account;
 {
     NSString *name = [handle hasPrefix:@"@"] ? [handle substringFromIndex:1] : handle;
     return [self get:@"/user" params:@{ @"name": name ?: @"" } completion:^(NSDictionary *json, NSError *error) {
-        CHUser *user = error ? nil : [CHUser userFromJSON:json[@"user"] ?: json];
+        CHUser *user = error ? nil : [CHUser userFromJSON:[json objectForKey:@"user"] ?: json];
         if (!error && !user) error = CHMakeError(CHErrorAPI, L(@"This profile could not be loaded."));
         if (completion) completion(user, error);
     }];
@@ -178,7 +179,7 @@ static NSString *g_account;
 {
     return [self get:@"/suggest" params:@{ @"q": text ?: @"" } completion:^(NSDictionary *json, NSError *error) {
         NSMutableArray *words = [NSMutableArray array];
-        for (id w in CHArr(json[@"items"])) if (CHStr(w).length) [words addObject:CHStr(w)];
+        for (id w in CHArr([json objectForKey:@"items"])) if (CHStr(w).length) [words addObject:CHStr(w)];
         if (completion) completion(words, error);
     }];
 }
@@ -189,7 +190,7 @@ static NSString *g_account;
 {
     return [self get:@"/trends" params:nil completion:^(NSDictionary *json, NSError *error) {
         NSMutableArray *trends = [NSMutableArray array];
-        for (id t in CHArr(json[@"items"])) { CHTrend *tr = [CHTrend trendFromJSON:t]; if (tr) [trends addObject:tr]; }
+        for (id t in CHArr([json objectForKey:@"items"])) { CHTrend *tr = [CHTrend trendFromJSON:t]; if (tr) [trends addObject:tr]; }
         if (completion) completion(trends, error);
     }];
 }
@@ -207,9 +208,9 @@ static NSString *g_account;
     NSDictionary *params = @{ @"kind": kind ?: @"all", @"cursor": cursor ?: @"" };
     return [self get:@"/notifications" params:params completion:^(NSDictionary *json, NSError *error) {
         NSMutableArray *items = [NSMutableArray array];
-        for (id n in CHArr(json[@"items"])) { CHNotification *nn = [CHNotification notificationFromJSON:n]; if (nn) [items addObject:nn]; }
-        NSString *c = CHStr(json[@"bottom"]);
-        if (completion) completion(items, c, CHBool(json[@"hasMore"]) && c.length > 0, error);
+        for (id n in CHArr([json objectForKey:@"items"])) { CHNotification *nn = [CHNotification notificationFromJSON:n]; if (nn) [items addObject:nn]; }
+        NSString *c = CHStr([json objectForKey:@"bottom"]);
+        if (completion) completion(items, c, CHBool([json objectForKey:@"hasMore"]) && c.length > 0, error);
     }];
 }
 
@@ -228,7 +229,7 @@ static NSString *g_account;
 + (CHHTTPTask *)performAction:(NSString *)action onId:(NSString *)objId completion:(void (^)(BOOL, NSError *))completion
 {
     return [self get:@"/action" params:@{ @"do": action ?: @"", @"id": objId ?: @"" } completion:^(NSDictionary *json, NSError *error) {
-        if (completion) completion(!error && CHBool(json[@"ok"]), error);
+        if (completion) completion(!error && CHBool([json objectForKey:@"ok"]), error);
     }];
 }
 
@@ -245,7 +246,7 @@ static NSString *g_account;
         NSDictionary *d = [json isKindOfClass:[NSDictionary class]] ? json : nil;
         [self noteIfNeedsLogin:d status:status];
         NSError *err = error;
-        if (!err && d[@"error"]) err = CHMakeError(status ?: CHErrorAPI, CHStr(d[@"error"]));
+        if (!err && [d objectForKey:@"error"]) err = CHMakeError(status ?: CHErrorAPI, CHStr([d objectForKey:@"error"]));
         if (completion) completion(d, err);
     }];
 }
@@ -254,15 +255,15 @@ static NSString *g_account;
        imageData:(NSData *)imageData imageType:(NSString *)imageType completion:(void (^)(NSString *, NSError *))completion
 {
     NSMutableDictionary *body = [NSMutableDictionary dictionary];
-    body[@"text"] = text ?: @"";
-    if (replyToId.length) body[@"replyTo"] = replyToId;
-    if (quoteURL.length) body[@"quoteUrl"] = quoteURL;
+    CHLegacyDictionarySet(body, @"text", text ?: @"");
+    if (replyToId.length) CHLegacyDictionarySet(body, @"replyTo", replyToId);
+    if (quoteURL.length) CHLegacyDictionarySet(body, @"quoteUrl", quoteURL);
     if (imageData.length) {
-        body[@"imageB64"] = [CHUtils base64Encode:imageData];
-        body[@"imageType"] = imageType ?: @"jpg";
+        CHLegacyDictionarySet(body, @"imageB64", [CHUtils base64Encode:imageData]);
+        CHLegacyDictionarySet(body, @"imageType", imageType ?: @"jpg");
     }
     [self postJSON:@"/post" object:body completion:^(NSDictionary *json, NSError *error) {
-        if (completion) completion(CHStr(json[@"id"]), error);
+        if (completion) completion(CHStr([json objectForKey:@"id"]), error);
     }];
 }
 
@@ -272,12 +273,12 @@ static NSString *g_account;
 {
     return [self get:@"/dm/list" params:nil completion:^(NSDictionary *json, NSError *error) {
         NSMutableArray *items = [NSMutableArray array];
-        for (id c in CHArr(json[@"items"])) {
+        for (id c in CHArr([json objectForKey:@"items"])) {
             NSDictionary *cd = CHDict(c);
-            CHUser *u = [CHUser userFromJSON:cd[@"user"]];
-            if (u) [items addObject:@{ @"user": u, @"last": CHStr(cd[@"last"]) ?: @"", @"time": @(CHDbl(cd[@"time"])) }];
+            CHUser *u = [CHUser userFromJSON:[cd objectForKey:@"user"]];
+            if (u) [items addObject:@{ @"user": u, @"last": CHStr([cd objectForKey:@"last"]) ?: @"", @"time": @(CHDbl([cd objectForKey:@"time"])) }];
         }
-        if (completion) completion(items, CHBool(json[@"supported"]), error);
+        if (completion) completion(items, CHBool([json objectForKey:@"supported"]), error);
     }];
 }
 
@@ -288,8 +289,8 @@ static NSString *g_account;
     NSDictionary *params = @{ @"name": name ?: @"", @"id": userId ?: @"", @"cursor": cursor ?: @"" };
     return [self get:@"/dm/history" params:params completion:^(NSDictionary *json, NSError *error) {
         NSMutableArray *msgs = [NSMutableArray array];
-        for (id m in CHArr(json[@"items"])) { CHMessage *mm = [CHMessage messageFromJSON:m]; if (mm) [msgs addObject:mm]; }
-        if (completion) completion(msgs, CHStr(json[@"uid"]), CHStr(json[@"cursor"]), CHBool(json[@"hasMore"]), error);
+        for (id m in CHArr([json objectForKey:@"items"])) { CHMessage *mm = [CHMessage messageFromJSON:m]; if (mm) [msgs addObject:mm]; }
+        if (completion) completion(msgs, CHStr([json objectForKey:@"uid"]), CHStr([json objectForKey:@"cursor"]), CHBool([json objectForKey:@"hasMore"]), error);
     }];
 }
 
@@ -299,7 +300,7 @@ static NSString *g_account;
     NSString *name = [handle hasPrefix:@"@"] ? [handle substringFromIndex:1] : handle;
     NSDictionary *body = @{ @"text": text ?: @"", @"name": name ?: @"", @"id": userId ?: @"" };
     [self postJSON:@"/dm/send" object:body completion:^(NSDictionary *json, NSError *error) {
-        if (completion) completion([CHMessage messageFromJSON:json[@"message"]], CHStr(json[@"uid"]), error);
+        if (completion) completion([CHMessage messageFromJSON:[json objectForKey:@"message"]], CHStr([json objectForKey:@"uid"]), error);
     }];
 }
 

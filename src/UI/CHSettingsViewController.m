@@ -132,7 +132,7 @@ typedef enum { SecAccount, SecServer, SecTimeline, SecAppearance, SecNetwork, Se
     cell.detailTextLabel.text = nil;
     cell.accessoryType = UITableViewCellAccessoryNone;
     cell.textLabel.textColor = blue ? [[CHTheme shared] linkColor] : [[CHTheme shared] primaryTextColor];
-    cell.textLabel.textAlignment = blue ? NSTextAlignmentCenter : NSTextAlignmentLeft;
+    cell.textLabel.textAlignment = blue ? UITextAlignmentCenter : UITextAlignmentLeft;
     return cell;
 }
 
@@ -274,7 +274,7 @@ typedef enum { SecAccount, SecServer, SecTimeline, SecAppearance, SecNetwork, Se
 - (void)alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex
 {
     if (buttonIndex == alertView.cancelButtonIndex) return;
-    for (NSDictionary *d in [CHSettings savedTweets]) [CHSettings unsaveTweet:CHStr(d[@"id"])];
+    for (NSDictionary *d in [CHSettings savedTweets]) [CHSettings unsaveTweet:CHStr([d objectForKey:@"id"])];
 }
 
 #pragma mark - Text fields

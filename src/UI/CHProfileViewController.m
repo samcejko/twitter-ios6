@@ -250,14 +250,14 @@
     y += handleH + 8;
 
     if (self.bioLabel.text.length) {
-        CGFloat bh = ceilf((float)[self.bioLabel.text sizeWithFont:self.bioLabel.font constrainedToSize:CGSizeMake(w, 100000) lineBreakMode:NSLineBreakByWordWrapping].height);
+        CGFloat bh = ceilf((float)[self.bioLabel.text sizeWithFont:self.bioLabel.font constrainedToSize:CGSizeMake(w, 100000) lineBreakMode:UILineBreakModeWordWrap].height);
         self.bioLabel.frame = CGRectMake(pad, y, w, bh);
         y += bh + 8;
     } else {
         self.bioLabel.frame = CGRectZero;
     }
     if (self.metaLabel.text.length) {
-        CGFloat mh = ceilf((float)[self.metaLabel.text sizeWithFont:self.metaLabel.font constrainedToSize:CGSizeMake(w, 100000) lineBreakMode:NSLineBreakByWordWrapping].height);
+        CGFloat mh = ceilf((float)[self.metaLabel.text sizeWithFont:self.metaLabel.font constrainedToSize:CGSizeMake(w, 100000) lineBreakMode:UILineBreakModeWordWrap].height);
         self.metaLabel.frame = CGRectMake(pad, y, w, mh);
         y += mh + 6;
     } else {
@@ -324,7 +324,7 @@
 - (void)fetchWithCursor:(NSString *)cursor completion:(void (^)(CHTweetPage *, NSError *))completion
 {
     if (![CHTwitter configured]) { completion(nil, CHMakeError(CHErrorAPI, L(@"Set the server address in Settings first."))); return; }
-    NSString *kind = self.kinds[(NSUInteger)self.kindIndex];
+    NSString *kind = [self.kinds objectAtIndex:(NSUInteger)self.kindIndex];
     [CHTwitter tweetsOfUser:self.handle userId:self.user.userId kind:kind cursor:cursor completion:completion];
 }
 

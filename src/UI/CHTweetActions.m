@@ -149,7 +149,7 @@ static NSMutableArray *g_live;
     }
     if (index >= (NSInteger)self.moreActions.count) return;
     NSString *url = self.tweet.shareURL;
-    switch ((CHMoreAction)[self.moreActions[(NSUInteger)index] integerValue]) {
+    switch ((CHMoreAction)[[self.moreActions objectAtIndex:(NSUInteger)index] integerValue]) {
         case CHMoreCopy: [UIPasteboard generalPasteboard].string = url; [CHUtils alertWithTitle:L(@"Copy link") message:L(@"Link copied.")]; break;
         case CHMoreShare: if (url.length) [CHExternalOpen presentShareSheetForURL:[NSURL URLWithString:url] from:(self.vc ?: [CHLinkRouter topController]) anchor:self.cell]; break;
         case CHMoreOpen: if (url.length) [CHExternalOpen openInSafari:[NSURL URLWithString:url]]; break;

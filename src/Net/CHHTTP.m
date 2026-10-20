@@ -1,3 +1,4 @@
+#import "CHLegacyCollections.h"
 #import "CHHTTP.h"
 #import "CHHTTPRequest.h"
 #import "CHSettings.h"
@@ -43,7 +44,7 @@ static const NSInteger CHMaxRedirects = 5;
         NSInteger status = request.statusCode;
         NSDictionary *responseHeaders = request.responseHeaders;
         if (!error && status >= 300 && status < 400 && status != 304 && hops < CHMaxRedirects) {
-            NSString *location = responseHeaders[@"location"];
+            NSString *location = [responseHeaders objectForKey:@"location"];
             NSURL *next = location.length ? [[NSURL URLWithString:location relativeToURL:url] absoluteURL] : nil;
             if (next.host.length) {
                 BOOL safe = [method isEqualToString:@"GET"] || [method isEqualToString:@"HEAD"];
@@ -55,7 +56,7 @@ static const NSInteger CHMaxRedirects = 5;
                     for (NSString *key in headers) {
                         NSString *lower = [key lowercaseString];
                         if ([lower isEqualToString:@"authorization"] || [lower isEqualToString:@"client-id"]) continue;
-                        trimmed[key] = headers[key];
+                        CHLegacyDictionarySet(trimmed, key, [headers objectForKey:key]);
                     }
                     nextHeaders = trimmed;
                 }
@@ -109,12 +110,12 @@ static const NSInteger CHMaxRedirects = 5;
     NSDictionary *d = CHDict(json);
     if (!d) {
         NSDictionary *first = CHDict([CHArr(json) firstObject]);
-        return CHStr(first[@"error"]) ?: CHStr(first[@"message"]);
+        return CHStr([first objectForKey:@"error"]) ?: CHStr([first objectForKey:@"message"]);
     }
-    NSString *message = CHStr(d[@"message"]);
-    if (!message.length) message = CHStr(d[@"error_description"]);
-    if (!message.length) message = CHStr(CHDict([CHArr(d[@"errors"]) firstObject])[@"message"]);
-    if (!message.length && [d[@"error"] isKindOfClass:[NSString class]]) message = d[@"error"];
+    NSString *message = CHStr([d objectForKey:@"message"]);
+    if (!message.length) message = CHStr([d objectForKey:@"error_description"]);
+    if (!message.length) message = CHStr([CHDict([CHArr([d objectForKey:@"errors"]) firstObject]) objectForKey:@"message"]);
+    if (!message.length && [[d objectForKey:@"error"] isKindOfClass:[NSString class]]) message = [d objectForKey:@"error"];
     return message.length ? message : nil;
 }
 
@@ -140,7 +141,7 @@ static const NSInteger CHMaxRedirects = 5;
 + (CHHTTPTask *)getJSON:(NSString *)url headers:(NSDictionary *)headers completion:(CHJSONCompletion)completion
 {
     NSMutableDictionary *h = [NSMutableDictionary dictionaryWithDictionary:headers ?: @{}];
-    if (!h[@"Accept"]) h[@"Accept"] = @"application/json";
+    if (![h objectForKey:@"Accept"]) CHLegacyDictionarySet(h, @"Accept", @"application/json");
     return [self request:@"GET" url:url headers:h body:nil retries:1 completion:[self jsonHandler:completion]];
 }
 
@@ -148,8 +149,8 @@ static const NSInteger CHMaxRedirects = 5;
               completion:(CHJSONCompletion)completion
 {
     NSMutableDictionary *h = [NSMutableDictionary dictionaryWithDictionary:headers ?: @{}];
-    if (!h[@"Accept"]) h[@"Accept"] = @"application/json";
-    if (!h[@"Content-Type"]) h[@"Content-Type"] = @"application/json";
+    if (![h objectForKey:@"Accept"]) CHLegacyDictionarySet(h, @"Accept", @"application/json");
+    if (![h objectForKey:@"Content-Type"]) CHLegacyDictionarySet(h, @"Content-Type", @"application/json");
     NSData *body = [CHUtils JSONDataFromObject:object] ?: [NSData data];
     return [self request:@"POST" url:url headers:h body:body retries:retries completion:[self jsonHandler:completion]];
 }
@@ -158,12 +159,12 @@ static const NSInteger CHMaxRedirects = 5;
 {
     NSMutableArray *pairs = [NSMutableArray array];
     for (NSString *key in fields) {
-        [pairs addObject:[NSString stringWithFormat:@"%@=%@", [CHUtils urlEncode:key], [CHUtils urlEncode:[fields[key] description]]]];
+        [pairs addObject:[NSString stringWithFormat:@"%@=%@", [CHUtils urlEncode:key], [CHUtils urlEncode:[[fields objectForKey:key] description]]]];
     }
     NSData *body = [[pairs componentsJoinedByString:@"&"] dataUsingEncoding:NSUTF8StringEncoding];
     NSMutableDictionary *h = [NSMutableDictionary dictionaryWithDictionary:headers ?: @{}];
-    if (!h[@"Content-Type"]) h[@"Content-Type"] = @"application/x-www-form-urlencoded";
-    if (!h[@"Accept"]) h[@"Accept"] = @"application/json";
+    if (![h objectForKey:@"Content-Type"]) CHLegacyDictionarySet(h, @"Content-Type", @"application/x-www-form-urlencoded");
+    if (![h objectForKey:@"Accept"]) CHLegacyDictionarySet(h, @"Accept", @"application/json");
     return [self request:@"POST" url:url headers:h body:body retries:0 completion:[self jsonHandler:completion]];
 }
 

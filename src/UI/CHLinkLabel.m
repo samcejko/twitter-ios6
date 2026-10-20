@@ -48,7 +48,7 @@
 - (void)setTextColor:(UIColor *)color { [super setTextColor:color]; if (!self.applying) [self applyLinks]; }
 - (void)setShadowColor:(UIColor *)color { [super setShadowColor:color]; if (!self.applying) [self applyLinks]; }
 - (void)setShadowOffset:(CGSize)offset { [super setShadowOffset:offset]; if (!self.applying) [self applyLinks]; }
-- (void)setTextAlignment:(NSTextAlignment)alignment { [super setTextAlignment:alignment]; if (!self.applying) [self applyLinks]; }
+- (void)setTextAlignment:(UITextAlignment)alignment { [super setTextAlignment:alignment]; if (!self.applying) [self applyLinks]; }
 - (void)setLineBreakMode:(NSLineBreakMode)mode { if (!self.applying) _wantedLineBreakMode = mode; [super setLineBreakMode:mode]; }
 - (void)setLinkColor:(UIColor *)color { _linkColor = color; [self applyLinks]; }
 
@@ -65,7 +65,7 @@
     [a addAttribute:NSForegroundColorAttributeName value:self.textColor ?: [UIColor blackColor] range:all];
     NSMutableParagraphStyle *paragraph = [[NSMutableParagraphStyle alloc] init];
     paragraph.alignment = self.textAlignment;
-    paragraph.lineBreakMode = NSLineBreakByWordWrapping;
+    paragraph.lineBreakMode = UILineBreakModeWordWrap;
     [a addAttribute:NSParagraphStyleAttributeName value:paragraph range:all];
     if (self.shadowColor) {
         NSShadow *shadow = [[NSShadow alloc] init];

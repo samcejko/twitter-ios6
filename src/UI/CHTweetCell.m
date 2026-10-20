@@ -1,3 +1,4 @@
+#import "CHLegacyCollections.h"
 #import "CHTweetCell.h"
 #import "CHImageLoader.h"
 #import "CHLinkLabel.h"
@@ -35,7 +36,7 @@ static CGFloat CHLineH(UIFont *f) { return ceilf((float)f.lineHeight); }
 static CGFloat CHTextHeight(NSString *s, UIFont *font, CGFloat width)
 {
     if (!s.length || width < 1) return 0;
-    CGSize sz = [s sizeWithFont:font constrainedToSize:CGSizeMake(width, 100000) lineBreakMode:NSLineBreakByWordWrapping];
+    CGSize sz = [s sizeWithFont:font constrainedToSize:CGSizeMake(width, 100000) lineBreakMode:UILineBreakModeWordWrap];
     return ceilf((float)sz.height);
 }
 
@@ -90,7 +91,7 @@ static void CHComputeMediaTiles(CHTweetLayout *L, CHTweet *tweet, CGFloat ox, CG
     L->mediaCount = n;
     CGFloat g = CHMediaGap(), h;
     if (n == 1) {
-        CHMedia *m = tweet.media[0];
+        CHMedia *m = [tweet.media objectAtIndex:0];
         CGFloat ratio = (m.width > 0 && m.height > 0) ? (CGFloat)m.height / m.width : 0.5625f;
         h = roundf(w * CHClamp(ratio, 0.56f, 1.3f));
         L->mediaTiles[0] = CGRectMake(ox, oy, w, h);
@@ -188,7 +189,7 @@ static UIImage *CHActionIcon(NSString *name, UIColor *color)
     CGFloat r = 0, g = 0, b = 0, a = 1;
     [color getRed:&r green:&g blue:&b alpha:&a];
     NSString *key = [NSString stringWithFormat:@"%@-%.2f-%.2f-%.2f", name, r, g, b];
-    UIImage *img = cache[key];
+    UIImage *img = [cache objectForKey:key];
     if (img) return img;
     CGSize size = CGSizeMake(18, 18);
     UIGraphicsBeginImageContextWithOptions(size, NO, 0);
@@ -264,7 +265,7 @@ static UIImage *CHActionIcon(NSString *name, UIColor *color)
     }
     img = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
-    cache[key] = img;
+    CHLegacyDictionarySet(cache, key, img);
     return img;
 }
 
@@ -340,7 +341,7 @@ static UIImage *CHVerifiedBadge(void)
         _nameLabel = [self labelFont:CHNameFont() color:[th primaryTextColor]];
         _verifiedView = [[UIImageView alloc] initWithImage:CHVerifiedBadge()];
         _timeLabel = [self labelFont:CHMetaFont() color:[th secondaryTextColor]];
-        _timeLabel.textAlignment = NSTextAlignmentRight;
+        _timeLabel.textAlignment = UITextAlignmentRight;
         _headerButton = [UIButton buttonWithType:UIButtonTypeCustom];
         [_headerButton addTarget:self action:@selector(tapUser) forControlEvents:UIControlEventTouchUpInside];
         _replyLabel = [self labelFont:CHSmallFont() color:[th secondaryTextColor]];
@@ -505,10 +506,10 @@ static UIImage *CHVerifiedBadge(void)
 
     // media
     for (NSInteger i = 0; i < 4; i++) {
-        CHImageView *v = self.mediaViews[(NSUInteger)i];
-        UIImageView *badge = self.playBadges[(NSUInteger)i];
+        CHImageView *v = [self.mediaViews objectAtIndex:(NSUInteger)i];
+        UIImageView *badge = [self.playBadges objectAtIndex:(NSUInteger)i];
         if (i < (NSInteger)tweet.media.count && i < 4) {
-            CHMedia *m = tweet.media[(NSUInteger)i];
+            CHMedia *m = [tweet.media objectAtIndex:(NSUInteger)i];
             v.hidden = NO;
             v.layer.cornerRadius = 8;
             v.maxPixels = 1024;
@@ -534,7 +535,7 @@ static UIImage *CHVerifiedBadge(void)
         self.quoteNameLabel.text = [qname stringByAppendingString:qh];
         self.quoteTextLabel.text = CHQuoteText(tweet.quoted);
         if (tweet.quoted.media.count) {
-            CHMedia *qm = tweet.quoted.media[0];
+            CHMedia *qm = [tweet.quoted.media objectAtIndex:0];
             self.quoteThumb.hidden = NO;
             self.quoteThumb.maxPixels = 256;
             [self.quoteThumb setImageURL:(qm.previewURL.length ? qm.previewURL : qm.url) placeholder:[th thumbnailPlaceholder]];
@@ -554,8 +555,8 @@ static UIImage *CHVerifiedBadge(void)
     NSArray *names = @[ @"reply", @"retweet", tweet.favorited ? @"like-filled" : @"like", @"views" ];
     UIColor *colors[4] = { secondary, tweet.retweeted ? green : secondary, tweet.favorited ? pink : secondary, secondary };
     for (NSInteger i = 0; i < 4; i++) {
-        ((UIImageView *)self.countIcons[(NSUInteger)i]).image = CHActionIcon(names[(NSUInteger)i], colors[i]);
-        UILabel *lb = self.countLabels[(NSUInteger)i];
+        ((UIImageView *)[self.countIcons objectAtIndex:(NSUInteger)i]).image = CHActionIcon([names objectAtIndex:(NSUInteger)i], colors[i]);
+        UILabel *lb = [self.countLabels objectAtIndex:(NSUInteger)i];
         lb.text = counts[i] > 0 ? [CHUtils formatBigCount:counts[i]] : @"";
         lb.textColor = colors[i];
     }
@@ -596,8 +597,8 @@ static UIImage *CHVerifiedBadge(void)
     self.textLabel2.frame = self.textLabel2.hidden ? CGRectZero : L.text;
 
     for (NSInteger i = 0; i < 4; i++) {
-        CHImageView *v = self.mediaViews[(NSUInteger)i];
-        UIImageView *badge = self.playBadges[(NSUInteger)i];
+        CHImageView *v = [self.mediaViews objectAtIndex:(NSUInteger)i];
+        UIImageView *badge = [self.playBadges objectAtIndex:(NSUInteger)i];
         if (i < L.mediaCount) {
             v.frame = L.mediaTiles[i];
             badge.frame = CGRectMake(CGRectGetMidX(v.frame) - 22, CGRectGetMidY(v.frame) - 22, 44, 44);
@@ -620,8 +621,8 @@ static UIImage *CHVerifiedBadge(void)
     CGFloat groupGap = CHIsPad() ? 30 : 22;
     CGFloat groupStart[4], groupWidth[4];
     for (NSInteger i = 0; i < 4; i++) {
-        UIImageView *iv = self.countIcons[(NSUInteger)i];
-        UILabel *lb = self.countLabels[(NSUInteger)i];
+        UIImageView *iv = [self.countIcons objectAtIndex:(NSUInteger)i];
+        UILabel *lb = [self.countLabels objectAtIndex:(NSUInteger)i];
         iv.frame = CGRectMake(cx, ay + (ah - 18) / 2, 18, 18);
         CGFloat w = lb.text.length ? ceilf((float)[lb.text sizeWithFont:CHSmallFont()].width) + 4 : 0;
         lb.frame = CGRectMake(cx + 20, ay, w, ah);
@@ -630,7 +631,7 @@ static UIImage *CHVerifiedBadge(void)
         cx += 20 + w + groupGap;
     }
     for (NSInteger i = 0; i < 3; i++)
-        ((UIButton *)self.actionButtons[(NSUInteger)i]).frame = CGRectMake(groupStart[i] - 4, ay - 4, groupWidth[i] + 12, ah + 8);
+        ((UIButton *)[self.actionButtons objectAtIndex:(NSUInteger)i]).frame = CGRectMake(groupStart[i] - 4, ay - 4, groupWidth[i] + 12, ah + 8);
 }
 
 - (void)layoutQuote:(CGSize)size
@@ -654,7 +655,7 @@ static UIImage *CHVerifiedBadge(void)
 - (void)tapMedia:(UITapGestureRecognizer *)g { if ([self.delegate respondsToSelector:@selector(tweetCell:didTapMediaAtIndex:)]) [self.delegate tweetCell:self didTapMediaAtIndex:g.view.tag]; }
 
 - (void)action:(NSString *)name { if ([self.delegate respondsToSelector:@selector(tweetCell:didTapAction:)]) [self.delegate tweetCell:self didTapAction:name]; }
-- (void)tapActionButton:(UIButton *)b { [self action:@[ @"reply", @"retweet", @"like" ][(NSUInteger)b.tag]]; }
+- (void)tapActionButton:(UIButton *)b { [self action:[@[ @"reply", @"retweet", @"like" ] objectAtIndex:(NSUInteger)b.tag]]; }
 - (void)tapBookmark { [self action:@"bookmark"]; }
 - (void)tapMore { [self action:@"more"]; }
 

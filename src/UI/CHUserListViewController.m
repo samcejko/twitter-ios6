@@ -43,7 +43,7 @@
     [th applyToTableView:self.tableView];
     [self.view addSubview:self.tableView];
     self.status = [[UILabel alloc] init];
-    self.status.textAlignment = NSTextAlignmentCenter;
+    self.status.textAlignment = UITextAlignmentCenter;
     self.status.textColor = [th secondaryTextColor];
     self.status.font = [th bodyFont];
     self.status.hidden = YES;
@@ -85,14 +85,14 @@
 {
     CHUserCell *cell = [tableView dequeueReusableCellWithIdentifier:@"user"];
     if (!cell) cell = [[CHUserCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"user"];
-    [cell setUser:self.users[(NSUInteger)indexPath.row]];
+    [cell setUser:[self.users objectAtIndex:(NSUInteger)indexPath.row]];
     return cell;
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
-    [CHLinkRouter openProfile:[(CHUser *)self.users[(NSUInteger)indexPath.row] handle]];
+    [CHLinkRouter openProfile:[(CHUser *)[self.users objectAtIndex:(NSUInteger)indexPath.row] handle]];
 }
 
 - (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath

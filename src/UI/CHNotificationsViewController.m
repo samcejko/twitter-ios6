@@ -1,3 +1,4 @@
+#import "CHLegacyCollections.h"
 #import "CHNotificationsViewController.h"
 #import "CHImageLoader.h"
 #import "CHLinkRouter.h"
@@ -22,7 +23,7 @@ static UIImage *CHNotifIcon(NSString *type)
     static NSMutableDictionary *cache;
     if (!cache) cache = [NSMutableDictionary dictionary];
     NSString *key = type ?: @"";
-    UIImage *img = cache[key];
+    UIImage *img = [cache objectForKey:key];
     if (img) return img;
     UIColor *color = [UIColor colorWithRed:0.4 green:0.55 blue:0.95 alpha:1];
     if ([type rangeOfString:@"heart"].location != NSNotFound) color = [UIColor colorWithRed:0.95 green:0.09 blue:0.46 alpha:1];
@@ -51,7 +52,7 @@ static UIImage *CHNotifIcon(NSString *type)
     }
     img = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
-    cache[key] = img;
+    CHLegacyDictionarySet(cache, key, img);
     return img;
 }
 
@@ -75,7 +76,7 @@ static UIImage *CHNotifIcon(NSString *type)
         _timeLabel = [[UILabel alloc] init];
         _timeLabel.font = [th smallFont];
         _timeLabel.textColor = [th secondaryTextColor];
-        _timeLabel.textAlignment = NSTextAlignmentRight;
+        _timeLabel.textAlignment = UITextAlignmentRight;
         _timeLabel.backgroundColor = [UIColor clearColor];
         for (UIView *v in @[ _iconView, _avatar, _textLabel2, _timeLabel ]) [self.contentView addSubview:v];
     }
@@ -100,7 +101,7 @@ static UIImage *CHNotifIcon(NSString *type)
 {
     NSString *text = n.text.length ? n.text : (n.tweet ? [CHUtils truncate:[CHUtils displayText:n.tweet.text] to:120] : @"");
     CGFloat tw = width - 52 - 12;
-    CGFloat h = [[CHUtils displayText:text] sizeWithFont:[[CHTheme shared] bodyFont] constrainedToSize:CGSizeMake(tw, 400) lineBreakMode:NSLineBreakByWordWrapping].height;
+    CGFloat h = [[CHUtils displayText:text] sizeWithFont:[[CHTheme shared] bodyFont] constrainedToSize:CGSizeMake(tw, 400) lineBreakMode:UILineBreakModeWordWrap].height;
     return MAX(64, ceilf((float)h) + 46);
 }
 
@@ -150,7 +151,7 @@ static UIImage *CHNotifIcon(NSString *type)
     [th applyToTableView:self.tableView];
     [self.view addSubview:self.tableView];
     self.status = [[UILabel alloc] init];
-    self.status.textAlignment = NSTextAlignmentCenter; self.status.numberOfLines = 0;
+    self.status.textAlignment = UITextAlignmentCenter; self.status.numberOfLines = 0;
     self.status.textColor = [th secondaryTextColor]; self.status.font = [th bodyFont]; self.status.hidden = YES;
     [self.view addSubview:self.status];
 }
@@ -204,21 +205,21 @@ static UIImage *CHNotifIcon(NSString *type)
 {
     CHNotificationCell *cell = [tableView dequeueReusableCellWithIdentifier:@"notif"];
     if (!cell) cell = [[CHNotificationCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"notif"];
-    [cell setNotification:self.items[(NSUInteger)indexPath.row]];
+    [cell setNotification:[self.items objectAtIndex:(NSUInteger)indexPath.row]];
     return cell;
 }
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    return [CHNotificationCell heightFor:self.items[(NSUInteger)indexPath.row] width:tableView.bounds.size.width];
+    return [CHNotificationCell heightFor:[self.items objectAtIndex:(NSUInteger)indexPath.row] width:tableView.bounds.size.width];
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
-    CHNotification *n = self.items[(NSUInteger)indexPath.row];
+    CHNotification *n = [self.items objectAtIndex:(NSUInteger)indexPath.row];
     if (n.tweet.tweetId.length) [CHLinkRouter openTweet:n.tweet];
-    else if (n.users.count == 1) [CHLinkRouter openProfile:[(CHUser *)n.users[0] handle]];
+    else if (n.users.count == 1) [CHLinkRouter openProfile:[(CHUser *)[n.users objectAtIndex:0] handle]];
 }
 
 - (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath

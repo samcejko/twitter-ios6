@@ -73,7 +73,7 @@
     [th applyToTableView:self.tableView];
     [self.view addSubview:self.tableView];
     self.status = [[UILabel alloc] init];
-    self.status.textAlignment = NSTextAlignmentCenter; self.status.numberOfLines = 0;
+    self.status.textAlignment = UITextAlignmentCenter; self.status.numberOfLines = 0;
     self.status.textColor = [th secondaryTextColor]; self.status.font = [th bodyFont]; self.status.hidden = YES;
     [self.view addSubview:self.status];
 }
@@ -125,15 +125,15 @@
 {
     CHConvoCell *cell = [tableView dequeueReusableCellWithIdentifier:@"c"];
     if (!cell) cell = [[CHConvoCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"c"];
-    NSDictionary *d = self.convos[(NSUInteger)indexPath.row];
-    [cell setUser:d[@"user"] last:d[@"last"]];
+    NSDictionary *d = [self.convos objectAtIndex:(NSUInteger)indexPath.row];
+    [cell setUser:[d objectForKey:@"user"] last:[d objectForKey:@"last"]];
     return cell;
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
-    CHUser *u = self.convos[(NSUInteger)indexPath.row][@"user"];
+    CHUser *u = [[self.convos objectAtIndex:(NSUInteger)indexPath.row] objectForKey:@"user"];
     [self.navigationController pushViewController:[[CHConversationViewController alloc] initWithHandle:u.handle userId:u.userId name:u.name] animated:YES];
 }
 

@@ -1,3 +1,4 @@
+#import "CHLegacyCollections.h"
 #import "CHMediaProxy.h"
 #import "CHHTTPRequest.h"
 #import "CHLiveRemux.h"
@@ -122,9 +123,9 @@ static NSString *CHResponseHead(NSInteger status, NSDictionary *headers, NSStrin
     NSArray *names = @[@[@"content-length", @"Content-Length"], @[@"content-range", @"Content-Range"],
                        @[@"accept-ranges", @"Accept-Ranges"], @[@"last-modified", @"Last-Modified"], @[@"etag", @"ETag"]];
     for (NSArray *n in names) {
-        NSString *v = headers[n[0]];
-        if (!v.length || ([n[0] isEqualToString:@"content-length"] && !keepLength)) continue;
-        [s appendFormat:@"%@: %@\r\n", n[1], v];
+        NSString *v = [headers objectForKey:[n objectAtIndex:0]];
+        if (!v.length || ([[n objectAtIndex:0] isEqualToString:@"content-length"] && !keepLength)) continue;
+        [s appendFormat:@"%@: %@\r\n", [n objectAtIndex:1], v];
     }
     [s appendString:@"Connection: close\r\n\r\n"];
     return s;
@@ -162,8 +163,8 @@ static NSString *CHResponseHead(NSInteger status, NSDictionary *headers, NSStrin
 {
     NSString *key = contentType.length ? contentType : @"?";
     @synchronized (self.servedCounts) {
-        if (bytes == 0) self.servedCounts[key] = @([self.servedCounts[key] unsignedIntegerValue] + 1);
-        else self.servedBytes[key] = @([self.servedBytes[key] unsignedLongLongValue] + bytes);
+        if (bytes == 0) CHLegacyDictionarySet(self.servedCounts, key, @([[self.servedCounts objectForKey:key] unsignedIntegerValue] + 1));
+        else CHLegacyDictionarySet(self.servedBytes, key, @([[self.servedBytes objectForKey:key] unsignedLongLongValue] + bytes));
     }
 }
 
@@ -172,7 +173,7 @@ static NSString *CHResponseHead(NSInteger status, NSDictionary *headers, NSStrin
     NSMutableArray *parts = [NSMutableArray array];
     @synchronized (self.servedCounts) {
         for (NSString *key in [[self.servedCounts allKeys] sortedArrayUsingSelector:@selector(compare:)]) {
-            [parts addObject:[NSString stringWithFormat:@"%@: %@ (%.1f MB)", key, self.servedCounts[key], [self.servedBytes[key] unsignedLongLongValue] / 1048576.0]];
+            [parts addObject:[NSString stringWithFormat:@"%@: %@ (%.1f MB)", key, [self.servedCounts objectForKey:key], [[self.servedBytes objectForKey:key] unsignedLongLongValue] / 1048576.0]];
         }
     }
     return parts.count ? [parts componentsJoinedByString:@", "] : @"nothing served yet";
@@ -293,14 +294,14 @@ static BOOL CHProxyPortAnswers(uint16_t port)
 - (NSString *)addEntry:(CHProxyEntry *)entry key:(NSString *)key
 {
     NSString *ident = [NSString stringWithFormat:@"%lu", (unsigned long)++self.nextId];
-    self.entries[ident] = entry;
-    if (key) self.idsByURL[key] = ident;
+    CHLegacyDictionarySet(self.entries, ident, entry);
+    if (key) CHLegacyDictionarySet(self.idsByURL, key, ident);
     NSMutableArray *order = entry.kind == CHProxyEntryFile ? self.fileOrder : self.playlistOrder;
     NSUInteger limit = entry.kind == CHProxyEntryFile ? CHProxyMaxFileEntries : CHProxyMaxPlaylistEntries;
     [order addObject:ident];
     while (order.count > limit) {
-        NSString *old = order[0];
-        CHProxyEntry *e = self.entries[old];
+        NSString *old = [order objectAtIndex:0];
+        CHProxyEntry *e = [self.entries objectForKey:old];
         if (e.url) {
             NSString *prefix = e.kind == CHProxyEntryFile ? @"u:" : @"d:";
             [self.idsByURL removeObjectForKey:[prefix stringByAppendingString:e.url.absoluteString]];
@@ -325,7 +326,7 @@ static BOOL CHProxyPortAnswers(uint16_t port)
     @synchronized (self) {
         if (self.listenFD < 0) return nil;
         NSString *key = [(playlist ? @"d:" : @"u:") stringByAppendingString:absolute];
-        NSString *ident = self.idsByURL[key];
+        NSString *ident = [self.idsByURL objectForKey:key];
         if (!ident) {
             CHProxyEntry *entry = [[CHProxyEntry alloc] init];
             entry.kind = playlist ? CHProxyEntryDirectory : CHProxyEntryFile;
@@ -333,7 +334,7 @@ static BOOL CHProxyPortAnswers(uint16_t port)
             entry.upstreamHeaders = upstreamHeaders;
             ident = [self addEntry:entry key:key];
         } else if (upstreamHeaders.count) {
-            ((CHProxyEntry *)self.entries[ident]).upstreamHeaders = upstreamHeaders;
+            ((CHProxyEntry *)[self.entries objectForKey:ident]).upstreamHeaders = upstreamHeaders;
         }
         if (playlist) {
             return [NSString stringWithFormat:@"http://127.0.0.1:%u/%@/d/%@/%@", self.port, self.secret, ident, CHProxyPlaylistName];
@@ -447,13 +448,12 @@ static BOOL CHProxyPortAnswers(uint16_t port)
         NSString *head = [[NSString alloc] initWithData:[buffer subdataWithRange:NSMakeRange(0, end.location)] encoding:NSISOLatin1StringEncoding] ?: @"";
         NSArray *lines = [head componentsSeparatedByString:@"\r\n"];
         NSArray *requestLine = [lines.firstObject componentsSeparatedByString:@" "];
-        NSString *method = requestLine.count >= 2 ? [requestLine[0] uppercaseString] : nil;
+        NSString *method = requestLine.count >= 2 ? [[requestLine objectAtIndex:0] uppercaseString] : nil;
         NSMutableDictionary *headers = [NSMutableDictionary dictionary];
         for (NSUInteger i = 1; i < lines.count; i++) {
-            NSRange colon = [lines[i] rangeOfString:@":"];
+            NSRange colon = [[lines objectAtIndex:i] rangeOfString:@":"];
             if (colon.location == NSNotFound) continue;
-            headers[[[lines[i] substringToIndex:colon.location] lowercaseString]] =
-                [[lines[i] substringFromIndex:colon.location + 1] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+            CHLegacyDictionarySet(headers, [[[lines objectAtIndex:i] substringToIndex:colon.location] lowercaseString], [[[lines objectAtIndex:i] substringFromIndex:colon.location + 1] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]]);
         }
         if (requestLine.count < 2 || !([method isEqualToString:@"GET"] || [method isEqualToString:@"HEAD"])) {
             CHSendStatus(fd, 404);
@@ -461,7 +461,7 @@ static BOOL CHProxyPortAnswers(uint16_t port)
             return;
         }
         self.lastRequestTime = [NSDate timeIntervalSinceReferenceDate];
-        [self serveTarget:requestLine[1] method:method headers:headers to:fd];
+        [self serveTarget:[requestLine objectAtIndex:1] method:method headers:headers to:fd];
         close(fd);
     }
 }
@@ -470,14 +470,14 @@ static BOOL CHProxyPortAnswers(uint16_t port)
 - (void)serveTarget:(NSString *)target method:(NSString *)method headers:(NSDictionary *)headers to:(int)fd
 {
     NSArray *parts = [target componentsSeparatedByString:@"/"];
-    if (parts.count < 5 || ![parts[1] isEqualToString:self.secret]) { [self countServed:@"HTTP 404" bytes:0]; CHSendStatus(fd, 404); return; }
-    NSString *kind = parts[2];
+    if (parts.count < 5 || ![[parts objectAtIndex:1] isEqualToString:self.secret]) { [self countServed:@"HTTP 404" bytes:0]; CHSendStatus(fd, 404); return; }
+    NSString *kind = [parts objectAtIndex:2];
     NSString *rest = [[parts subarrayWithRange:NSMakeRange(4, parts.count - 4)] componentsJoinedByString:@"/"];
     CHProxyEntry *entry;
-    @synchronized (self) { entry = self.entries[parts[3]]; }
+    @synchronized (self) { entry = [self.entries objectForKey:[parts objectAtIndex:3]]; }
     if (self.logRequests) {
-        NSString *range = headers[@"range"];
-        CHLog(@"Proxy %@ %@/%@/%@%@ -> %@", method, kind, parts[3], rest.length > 40 ? [rest substringToIndex:40] : rest,
+        NSString *range = [headers objectForKey:@"range"];
+        CHLog(@"Proxy %@ %@/%@/%@%@ -> %@", method, kind, [parts objectAtIndex:3], rest.length > 40 ? [rest substringToIndex:40] : rest,
               range.length ? [NSString stringWithFormat:@" [%@]", range] : @"", entry ? (entry.url.host ?: @"text") : @"unknown entry");
     }
     if (!entry) { [self countServed:@"HTTP 404" bytes:0]; CHSendStatus(fd, 404); return; }
@@ -490,7 +490,7 @@ static BOOL CHProxyPortAnswers(uint16_t port)
         [self serveLive:entry.remux name:rest method:method to:fd];
         return;
     }
-    NSString *label = [NSString stringWithFormat:@"%@/%@", kind, parts[3]];
+    NSString *label = [NSString stringWithFormat:@"%@/%@", kind, [parts objectAtIndex:3]];
     if (entry.kind == CHProxyEntryFile && [kind isEqualToString:@"u"]) {
         [self relayURL:entry.url method:method headers:headers upstream:entry.upstreamHeaders viaDirectory:NO label:label to:fd];
         return;
@@ -533,12 +533,12 @@ static BOOL CHProxyPortAnswers(uint16_t port)
     for (int hop = 0; hop < CHProxyMaxRedirects; hop++) {
         BOOL playlistByName = [[url.path lowercaseString] hasSuffix:@".m3u8"];
         NSMutableDictionary *h = [NSMutableDictionary dictionary];
-        h[@"Accept"] = @"*/*";
+        CHLegacyDictionarySet(h, @"Accept", @"*/*");
         // origin-specific headers (Twitter's media CDN serves best with a Referer and a browser UA)
-        for (NSString *k in upstreamHeaders) h[k] = upstreamHeaders[k];
+        for (NSString *k in upstreamHeaders) CHLegacyDictionarySet(h, k, [upstreamHeaders objectForKey:k]);
         if (!playlistByName) {
-            if (playerHeaders[@"range"]) h[@"Range"] = playerHeaders[@"range"];
-            if (playerHeaders[@"if-range"]) h[@"If-Range"] = playerHeaders[@"if-range"];
+            if ([playerHeaders objectForKey:@"range"]) CHLegacyDictionarySet(h, @"Range", [playerHeaders objectForKey:@"range"]);
+            if ([playerHeaders objectForKey:@"if-range"]) CHLegacyDictionarySet(h, @"If-Range", [playerHeaders objectForKey:@"if-range"]);
         }
         CHHTTPRequest *r = [[CHHTTPRequest alloc] initWithMethod:method URL:url];
         r.headers = h;
@@ -560,15 +560,15 @@ static BOOL CHProxyPortAnswers(uint16_t port)
         __weak CHHTTPRequest *weakRequest = r;
         __weak CHMediaProxy *weakSelf = self;
         r.onHeaders = ^(NSInteger status, NSDictionary *hdrs) {
-            NSString *location = hdrs[@"location"];
+            NSString *location = [hdrs objectForKey:@"location"];
             if (status >= 300 && status < 400 && status != 304 && location.length) {
                 redirect = [[NSURL URLWithString:location relativeToURL:current] absoluteURL];
                 return;
             }
-            NSString *type = [hdrs[@"content-type"] lowercaseString] ?: @"";
+            NSString *type = [[hdrs objectForKey:@"content-type"] lowercaseString] ?: @"";
             playlist = status < 300 && (playlistByName || [type rangeOfString:@"mpegurl"].location != NSNotFound);
             if (playlist) { playlistStatus = status; return; }
-            NSString *encoding = [hdrs[@"content-encoding"] lowercaseString] ?: @"";
+            NSString *encoding = [[hdrs objectForKey:@"content-encoding"] lowercaseString] ?: @"";
             BOOL keepLength = !encoding.length || [encoding isEqualToString:@"identity"];
             if (status < 300 && status != 204) {
                 // the type comes from the first bytes: the head waits for them (they follow right away)
@@ -578,7 +578,7 @@ static BOOL CHProxyPortAnswers(uint16_t port)
                 return;
             }
             headSent = YES;
-            NSString *contentType = status < 300 ? CHContentTypeForPath(current.path, hdrs[@"content-type"], nil) : hdrs[@"content-type"];
+            NSString *contentType = status < 300 ? CHContentTypeForPath(current.path, [hdrs objectForKey:@"content-type"], nil) : [hdrs objectForKey:@"content-type"];
             servedType = status < 300 ? contentType : [NSString stringWithFormat:@"HTTP %ld", (long)status];
             [weakSelf countServed:servedType bytes:0];
             if (!CHSendString(fd, CHResponseHead(status, hdrs, contentType, keepLength))) { broken = YES; [weakRequest cancel]; }
@@ -588,7 +588,7 @@ static BOOL CHProxyPortAnswers(uint16_t port)
             if (playlist) { [collected appendData:data]; return; }
             if (!headSent && pendingHeaders) {
                 headSent = YES;
-                NSString *contentType = CHContentTypeForPath(current.path, pendingHeaders[@"content-type"], data);
+                NSString *contentType = CHContentTypeForPath(current.path, [pendingHeaders objectForKey:@"content-type"], data);
                 servedType = contentType;
                 [weakSelf countServed:servedType bytes:0];
                 if (!CHSendString(fd, CHResponseHead(pendingStatus, pendingHeaders, contentType, pendingKeepLength))) { broken = YES; [weakRequest cancel]; return; }
@@ -608,7 +608,7 @@ static BOOL CHProxyPortAnswers(uint16_t port)
         if (!headSent && pendingHeaders && !redirect) {
             // an empty body (or a HEAD request): the head goes out as it is
             headSent = YES;
-            CHSendString(fd, CHResponseHead(pendingStatus, pendingHeaders, CHContentTypeForPath(current.path, pendingHeaders[@"content-type"], nil), pendingKeepLength));
+            CHSendString(fd, CHResponseHead(pendingStatus, pendingHeaders, CHContentTypeForPath(current.path, [pendingHeaders objectForKey:@"content-type"], nil), pendingKeepLength));
         }
         if (redirect.host.length) { url = redirect; continue; }
         if (playlist) {

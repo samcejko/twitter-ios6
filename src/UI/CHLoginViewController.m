@@ -108,7 +108,7 @@ typedef enum { CHLoginCookies, CHLoginPassword } CHLoginMode;
     if (self.mode == CHLoginCookies)
         return [self fieldCell:tableView field:(indexPath.row == 0 ? self.authField : self.ct0Field)];
     if (indexPath.section == 0) {
-        UITextField *f = @[ self.userField, self.passField, self.emailField, self.totpField ][(NSUInteger)indexPath.row];
+        UITextField *f = [@[ self.userField, self.passField, self.emailField, self.totpField ] objectAtIndex:(NSUInteger)indexPath.row];
         return [self fieldCell:tableView field:f];
     }
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
